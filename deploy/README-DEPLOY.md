@@ -32,7 +32,7 @@ Upload to the server:
 - `dist/` -> `/var/www/java/dist`
 - `server/` -> `/var/www/java/server`
 - `shared/` -> `/var/www/java/shared`
-- `public/` -> `/var/www/java/public`
+- `public/` -> `/var/www/java/public` (optional when building locally; `dist/` already contains copied public assets)
 - `package.json` and `package-lock.json` -> `/var/www/java/`
 
 ## 3) Install runtime dependencies + Playwright deps (server)
@@ -90,18 +90,17 @@ sudo certbot --apache -d java.haan.lu
 
 1) Build locally
 ```
-npm install
+npm ci
 npm run build
 ```
 
-2) Upload to the server (overwrite existing)
-- `dist/` -> `/var/www/java/dist`
-- `server/` -> `/var/www/java/server`
-- `shared/` -> `/var/www/java/shared`
-- `public/` -> `/var/www/java/public`
-- `package.json` and `package-lock.json` -> `/var/www/java/`
+2) Upload changed files to the server (overwrite existing)
+- Frontend changes: `dist/` -> `/var/www/java/dist`
+- Backend changes: `server/` -> `/var/www/java/server` and `shared/` -> `/var/www/java/shared`
+- Dependency changes: `package.json` and `package-lock.json` -> `/var/www/java/`
+- `public/` is optional when you build locally; files from `public/` are copied into `dist/` during `vite build`.
 
-3) On the server, update runtime deps
+3) On the server, update runtime deps only if `package.json` or `package-lock.json` changed
 ```
 cd /var/www/java
 npm ci --omit=dev
@@ -112,12 +111,17 @@ npm ci --omit=dev
 sudo -u www-data -H env PLAYWRIGHT_BROWSERS_PATH=/var/www/java/.cache/ms-playwright npx playwright install chromium
 ```
 
-5) Restart the service
+5) Restart backend service only if backend code, deps, or `/var/www/java/server/.env` changed
 ```
 sudo systemctl restart javasourceprinter
 ```
 
-Optional health check:
+6) Reload Apache only if vhost config changed
+```
+sudo systemctl reload apache2
+```
+
+Optional health check (after backend changes):
 ```
 curl http://127.0.0.1:3001/api/health
 ```
