@@ -54,24 +54,24 @@ const EXTENSION_LANGUAGE_MAP = new Map([
   ['.ksh', 'bash'],
   // SQL
   ['.sql', 'sql'],
-  // HTML / XML
-  ['.html', 'xml'],
-  ['.htm', 'xml'],
-  ['.xml', 'xml'],
-  ['.xsl', 'xml'],
-  ['.xslt', 'xml'],
-  // CSS
-  ['.css', 'css'],
-  ['.scss', 'scss'],
-  ['.sass', 'scss'],
-  ['.less', 'css'],
-  // Data / config
-  ['.json', 'json'],
-  ['.yaml', 'yaml'],
-  ['.yml', 'yaml'],
-  ['.toml', 'ini'],
-  ['.ini', 'ini'],
-  ['.cfg', 'ini'],
+  // // HTML / XML
+  // ['.html', 'xml'],
+  // ['.htm', 'xml'],
+  // ['.xml', 'xml'],
+  // ['.xsl', 'xml'],
+  // ['.xslt', 'xml'],
+  // // CSS
+  // ['.css', 'css'],
+  // ['.scss', 'scss'],
+  // ['.sass', 'scss'],
+  // ['.less', 'css'],
+  // // Data / config
+  // ['.json', 'json'],
+  // ['.yaml', 'yaml'],
+  // ['.yml', 'yaml'],
+  // ['.toml', 'ini'],
+  // ['.ini', 'ini'],
+  // ['.cfg', 'ini'],
   // Markdown
   ['.md', 'markdown'],
   ['.markdown', 'markdown'],
@@ -113,9 +113,9 @@ const EXTENSION_LANGUAGE_MAP = new Map([
   // Visual Basic
   ['.vb', 'vbscript'],
   ['.vbs', 'vbscript'],
-  // Groovy / Gradle
-  ['.groovy', 'groovy'],
-  ['.gradle', 'groovy'],
+  // // Groovy / Gradle
+  // ['.groovy', 'groovy'],
+  // ['.gradle', 'groovy'],
 ]);
 
 export const HLJS_LANGUAGE_IDS = [...new Set(EXTENSION_LANGUAGE_MAP.values())];
