@@ -4,14 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
-    <title>Java Source Printer</title>
+    <title>Source Printer</title>
   </head>
   <body class="bg-base-100 text-base-content">
     <main id="landing" class="relative flex min-h-screen items-center justify-center px-6">
       <div class="flex w-full max-w-xl flex-col items-center gap-6 text-center">
         <div class="space-y-3">
-          <img src="/logo.png" alt="Java Source Printer" class="mx-auto w-auto" />
-          <p class="text-sm text-base-content/70">Select a zip file with your Java projects to preview <span class="font-semibold">locally</span>. Embedded <span class="font-semibold">.umz</span> archives are supported.</p>
+          <img src="/logo.png" alt="Source Printer" class="mx-auto w-auto" />
+          <p class="text-sm text-base-content/70">Select a zip file with your student projects to preview <span class="font-semibold">locally</span>. Embedded <span class="font-semibold">.umz</span> archives (Unimozer/Java) are supported.</p>
         </div>
         <div class="flex w-full flex-col items-center gap-2">
           <input id="zip-input" type="file" accept=".zip" class="file-input file-input-bordered w-full max-w-md" />
@@ -25,7 +25,7 @@
       </div>
       <div class="absolute bottom-6 right-6 flex items-center gap-4">
         <a
-          href="https://github.com/haan/javasourceprinter"
+          href="https://github.com/haan/sourceprinter"
           class="link link-primary text-xs"
           target="_blank"
           rel="noreferrer"
@@ -47,7 +47,7 @@
           <section class="space-y-3">
             <h3 class="text-base font-semibold text-base-content">Summary</h3>
             <p>
-              The Java Source Printer processes the zip file you upload solely to generate the PDF documents you request.
+              The Source Printer processes the zip file you upload solely to generate the PDF documents you request.
               The content of uploaded files is not stored, shared, distributed, or processed for any other purpose.
               Files are handled transiently and are deleted immediately after the PDF output has been produced.
             </p>
@@ -57,7 +57,7 @@
             <h3 class="text-base font-semibold text-base-content">How processing works</h3>
             <ol class="list-decimal space-y-2 pl-5">
               <li>
-                Your browser reads the zip file locally to display a preview of Java files. This preview happens entirely on
+                Your browser reads the zip file locally to display a preview of source files. This preview happens entirely on
                 your device and is not uploaded until you click "Generate PDF files" and confirm.
               </li>
               <li>
@@ -65,7 +65,7 @@
                 selected are sent to the server over an encrypted HTTPS connection.
               </li>
               <li>
-                The server saves the upload into a temporary working directory, extracts Java source files, applies the
+                The server saves the upload into a temporary working directory, extracts source files, applies the
                 selected filters, and renders highlighted pages into PDF format.
               </li>
               <li>
@@ -136,8 +136,11 @@
               preview and PDFs.
             </p>
             <p>
-              Java source files can be in any subfolder under each project. Only files ending with
-              <span class="font-medium">.java</span> are processed.
+              Source code files can be in any subfolder under each project. Common file types are supported
+              (e.g. <span class="font-medium">.java</span>, <span class="font-medium">.py</span>,
+              <span class="font-medium">.js</span>, <span class="font-medium">.ts</span>,
+              <span class="font-medium">.c</span>, <span class="font-medium">.cpp</span> and many more).
+              Binary and non-source files are ignored.
             </p>
             <p>
               If your projects are nested below the top level, set the <span class="font-medium">Project folder level</span>
@@ -165,7 +168,7 @@
               <li>Maximum zip size: 50 MB.</li>
               <li>Maximum total extracted size: 50 MB.</li>
               <li>Maximum size per embedded .umz: 10 MB.</li>
-              <li>Maximum size per Java file: 2 MB.</li>
+              <li>Maximum size per source file: 2 MB.</li>
               <li>Maximum number of files: 2,000.</li>
             </ul>
           </section>
@@ -174,12 +177,12 @@
             <h3 class="text-base font-semibold text-base-content">Notes</h3>
             <ul class="list-disc space-y-2 pl-5">
               <li>The folder name at the selected project level is used as the project name.</li>
-              <li>Embedded <span class="font-medium">.umz</span> files are treated as zip containers and scanned for <span class="font-medium">.java</span> files.</li>
-              <li>Java files found in a .umz appear with a nested path (for example <span class="font-mono">ProjectA/A.umz/src/Order.java</span>).</li>
+              <li>Embedded <span class="font-medium">.umz</span> files (Unimozer/Java) are treated as zip containers and scanned for source files.</li>
+              <li>Source files found in a .umz appear with a nested path (for example <span class="font-mono">ProjectA/A.umz/src/Order.java</span>).</li>
               <li>Nested .umz files inside another .umz are ignored.</li>
               <li>Hidden/macOS metadata files are ignored (for example entries under <span class="font-mono">__MACOSX</span> or files starting with <span class="font-mono">.</span>).</li>
               <li>Use the checkbox next to a file to exclude it from the generated PDFs.</li>
-              <li>Non-Java files are ignored.</li>
+              <li>Binary and non-source files (images, compiled outputs, etc.) are ignored.</li>
             </ul>
           </section>
         </div>
@@ -221,7 +224,7 @@
     <div id="app" class="hidden min-h-screen">
       <header class="px-6 pt-6">
         <div class="mx-auto flex max-w-7xl items-center">
-          <img src="/logo.png" alt="Java Source Printer" class="h-20 w-auto ml-1" />
+          <img src="/logo.png" alt="Source Printer" class="h-20 w-auto ml-1" />
         </div>
       </header>
 
@@ -250,7 +253,7 @@
               <span id="file-count" class="text-xs text-base-content/60">0 files</span>
             </div>
             <div id="file-list" class="mt-4 max-h-[360px] overflow-x-auto overflow-y-auto text-sm text-base-content/80">
-              <p class="text-xs text-base-content/60">Upload a zip to see your Java files.</p>
+              <p class="text-xs text-base-content/60">Upload a zip to see your source files.</p>
             </div>
           </div>
         </section>
@@ -320,21 +323,13 @@
                 <div class="collapse-title text-sm font-semibold">Filter</div>
                 <div class="collapse-content">
                   <div class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2">
-                    <span class="label-text">Remove JavaDoc</span>
-                    <input id="filter-javadoc-toggle" type="checkbox" class="toggle toggle-primary justify-self-end" />
-
                     <span class="label-text">Remove comments</span>
                     <input id="filter-comments-toggle" type="checkbox" class="toggle toggle-primary justify-self-end" />
 
                     <span class="label-text">Collapse blank lines</span>
                     <input id="filter-blanklines-toggle" type="checkbox" class="toggle toggle-primary justify-self-end" />
-
-                    <span class="label-text">Hide initComponents()</span>
-                    <input id="filter-initcomponents-toggle" type="checkbox" class="toggle toggle-primary justify-self-end" />
-
-                    <span class="label-text">Hide main()</span>
-                    <input id="filter-main-toggle" type="checkbox" class="toggle toggle-primary justify-self-end" />
                   </div>
+                  <div id="language-filter-section"></div>
                 </div>
               </div>
 
@@ -403,7 +398,7 @@
 
             <div id="preview-wrapper" class="mt-6 mx-auto rounded-box border border-base-300 bg-white">
               <pre class="max-h-[68vh] overflow-auto">
-                <code id="code-block" class="language-java"></code>
+                <code id="code-block" class="language-plaintext"></code>
               </pre>
             </div>
 
@@ -412,7 +407,7 @@
       </main>
       <div class="fixed bottom-6 right-6 flex items-center gap-4">
         <a
-          href="https://github.com/haan/javasourceprinter"
+          href="https://github.com/haan/sourceprinter"
           class="link link-primary text-xs"
           target="_blank"
           rel="noreferrer"

@@ -8,7 +8,7 @@ import { PassThrough } from 'node:stream';
 import { PDFDocument } from 'pdf-lib';
 import { config } from './config.js';
 import { parseSettings } from './settings.js';
-import { saveUploadToTemp, readJavaProjects } from './zip.js';
+import { saveUploadToTemp, readSourceProjects } from './zip.js';
 import { baseNameWithoutExtension, sanitizeFilename, UserError } from './utils.js';
 import { applyFilters, applyFiltersWithLineNumbers } from '../shared/filters.js';
 import {
@@ -46,14 +46,15 @@ async function renderFilePdf({ file, projectName, settings, renderer, theme, hig
   let content = file.content;
   let lineNumbers = null;
   let maxLineNumber = null;
+  const fileSettings = { ...settings, language: file.language };
 
   if (settings.showLineNumbers) {
-    const result = applyFiltersWithLineNumbers(file.content, settings);
+    const result = applyFiltersWithLineNumbers(file.content, fileSettings);
     content = result.lines.map((line) => line.text).join('\n');
     lineNumbers = result.lines.map((line) => line.number);
     maxLineNumber = result.maxLineNumber;
   } else {
-    content = applyFilters(file.content, settings);
+    content = applyFilters(file.content, fileSettings);
   }
 
   const html = buildFileHtml({
@@ -67,6 +68,7 @@ async function renderFilePdf({ file, projectName, settings, renderer, theme, hig
     highlighter,
     fontFamily: settings.fontFamily,
     fontCss,
+    language: file.language,
   });
   const headerTemplate = buildHeaderTemplate({
     settings,
@@ -309,7 +311,7 @@ async function runRenderJob(job) {
   job.status = 'running';
 
   try {
-    let projects = await readJavaProjects(zipPath, config, settings.projectLevel);
+    let projects = await readSourceProjects(zipPath, config, settings.projectLevel);
     projects = filterProjectsByIncluded(projects, settings.includedFiles);
     const totalFiles = countProjectFiles(projects);
     if (Array.isArray(settings.includedFiles) && totalFiles === 0) {
@@ -432,7 +434,7 @@ app.post('/api/render', async (request, reply) => {
     const { tempDir, zipPath, originalName } = uploadInfo;
 
     try {
-      let projects = await readJavaProjects(zipPath, config, settings.projectLevel);
+      let projects = await readSourceProjects(zipPath, config, settings.projectLevel);
       projects = filterProjectsByIncluded(projects, settings.includedFiles);
       if (Array.isArray(settings.includedFiles) && countProjectFiles(projects) === 0) {
         throw new UserError('No files selected.', 422);

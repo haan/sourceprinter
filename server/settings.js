@@ -1,5 +1,6 @@
 import { DEFAULT_FONT_ID, getFontById } from '../shared/fonts.js';
 import { DEFAULT_THEME_ID, getThemeById } from '../shared/themes.js';
+import { LANGUAGE_FILTERS } from '../shared/languageFilters.js';
 import { clampNumber } from './utils.js';
 
 export const DEFAULT_SETTINGS = {
@@ -17,11 +18,15 @@ export const DEFAULT_SETTINGS = {
   showFilePath: false,
   showPageNumbers: true,
   showLineNumbers: false,
-  removeJavadoc: false,
   removeComments: false,
   collapseBlankLines: true,
-  hideInitComponents: true,
-  hideMain: true,
+  languageFilters: {
+    java: {
+      removeJavadoc: false,
+      hideInitComponents: true,
+      hideMain: true,
+    },
+  },
 };
 
 function toStringPayload(payload) {
@@ -51,6 +56,22 @@ function toBreakMultiple(value, fallback) {
   return [1, 2, 4, 8].includes(parsed) ? parsed : fallback;
 }
 
+function parseLanguageFilters(raw) {
+  const result = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return DEFAULT_SETTINGS.languageFilters;
+  }
+  for (const [languageId, filterDefs] of Object.entries(LANGUAGE_FILTERS)) {
+    const langRaw = raw[languageId];
+    const langDefaults = DEFAULT_SETTINGS.languageFilters[languageId] ?? {};
+    result[languageId] = {};
+    for (const { id } of filterDefs) {
+      result[languageId][id] = toBoolean(langRaw?.[id], langDefaults[id] ?? false);
+    }
+  }
+  return result;
+}
+
 export function parseSettings(payload) {
   let parsed = {};
   try {
@@ -77,12 +98,10 @@ export function parseSettings(payload) {
   const showFileHeader = toBoolean(parsed.showFileHeader, DEFAULT_SETTINGS.showFileHeader);
   const showPageNumbers = toBoolean(parsed.showPageNumbers, DEFAULT_SETTINGS.showPageNumbers);
   const showLineNumbers = toBoolean(parsed.showLineNumbers, DEFAULT_SETTINGS.showLineNumbers);
-  const removeJavadoc = toBoolean(parsed.removeJavadoc, DEFAULT_SETTINGS.removeJavadoc);
   const removeComments = toBoolean(parsed.removeComments, DEFAULT_SETTINGS.removeComments);
   const collapseBlankLines = toBoolean(parsed.collapseBlankLines, DEFAULT_SETTINGS.collapseBlankLines);
-  const hideInitComponents = toBoolean(parsed.hideInitComponents, DEFAULT_SETTINGS.hideInitComponents);
-  const hideMain = toBoolean(parsed.hideMain, DEFAULT_SETTINGS.hideMain);
   const showFilePath = showFileHeader ? toBoolean(parsed.showFilePath, DEFAULT_SETTINGS.showFilePath) : false;
+  const languageFilters = parseLanguageFilters(parsed.languageFilters);
 
   return {
     fontSize,
@@ -100,10 +119,8 @@ export function parseSettings(payload) {
     showFilePath,
     showPageNumbers,
     showLineNumbers,
-    removeJavadoc,
     removeComments,
     collapseBlankLines,
-    hideInitComponents,
-    hideMain,
+    languageFilters,
   };
 }

@@ -1,5 +1,5 @@
 {
-  "name": "javasourceprinter",
+  "name": "sourceprinter",
   "version": "0.9.4",
   "private": true,
   "type": "module",
