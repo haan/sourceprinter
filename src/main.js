@@ -1,13 +1,91 @@
 import './index.css';
 import JSZip from 'jszip';
 import hljs from 'highlight.js/lib/core';
+import bash from 'highlight.js/lib/languages/bash';
+import c from 'highlight.js/lib/languages/c';
+import clojure from 'highlight.js/lib/languages/clojure';
+import cpp from 'highlight.js/lib/languages/cpp';
+import csharp from 'highlight.js/lib/languages/csharp';
+import css from 'highlight.js/lib/languages/css';
+import dart from 'highlight.js/lib/languages/dart';
+import delphi from 'highlight.js/lib/languages/delphi';
+import elixir from 'highlight.js/lib/languages/elixir';
+import erlang from 'highlight.js/lib/languages/erlang';
+import fortran from 'highlight.js/lib/languages/fortran';
+import go from 'highlight.js/lib/languages/go';
+import groovy from 'highlight.js/lib/languages/groovy';
+import haskell from 'highlight.js/lib/languages/haskell';
+import ini from 'highlight.js/lib/languages/ini';
 import java from 'highlight.js/lib/languages/java';
+import javascript from 'highlight.js/lib/languages/javascript';
+import json from 'highlight.js/lib/languages/json';
+import kotlin from 'highlight.js/lib/languages/kotlin';
+import lua from 'highlight.js/lib/languages/lua';
+import markdown from 'highlight.js/lib/languages/markdown';
+import matlab from 'highlight.js/lib/languages/matlab';
+import perl from 'highlight.js/lib/languages/perl';
+import php from 'highlight.js/lib/languages/php';
+import plaintext from 'highlight.js/lib/languages/plaintext';
+import powershell from 'highlight.js/lib/languages/powershell';
+import python from 'highlight.js/lib/languages/python';
+import r from 'highlight.js/lib/languages/r';
+import ruby from 'highlight.js/lib/languages/ruby';
+import rust from 'highlight.js/lib/languages/rust';
+import scala from 'highlight.js/lib/languages/scala';
+import scss from 'highlight.js/lib/languages/scss';
+import sql from 'highlight.js/lib/languages/sql';
+import swift from 'highlight.js/lib/languages/swift';
+import typescript from 'highlight.js/lib/languages/typescript';
+import vbscript from 'highlight.js/lib/languages/vbscript';
+import x86asm from 'highlight.js/lib/languages/x86asm';
+import xml from 'highlight.js/lib/languages/xml';
+import yaml from 'highlight.js/lib/languages/yaml';
 import { DEFAULT_FONT_ID, getFontById, getFontOptions } from '../shared/fonts.js';
 import { DEFAULT_THEME_ID, getThemeOptions } from '../shared/themes.js';
 import { applyHighlightTheme } from './theme-loader.js';
 import { applyFilters, applyFiltersWithLineNumbers } from '../shared/filters.js';
+import { getLanguageForExtension, isSourceFile } from '../shared/languages.js';
+import { getFiltersForLanguages } from '../shared/languageFilters.js';
 
+hljs.registerLanguage('bash', bash);
+hljs.registerLanguage('c', c);
+hljs.registerLanguage('clojure', clojure);
+hljs.registerLanguage('cpp', cpp);
+hljs.registerLanguage('csharp', csharp);
+hljs.registerLanguage('css', css);
+hljs.registerLanguage('dart', dart);
+hljs.registerLanguage('delphi', delphi);
+hljs.registerLanguage('elixir', elixir);
+hljs.registerLanguage('erlang', erlang);
+hljs.registerLanguage('fortran', fortran);
+hljs.registerLanguage('go', go);
+hljs.registerLanguage('groovy', groovy);
+hljs.registerLanguage('haskell', haskell);
+hljs.registerLanguage('ini', ini);
 hljs.registerLanguage('java', java);
+hljs.registerLanguage('javascript', javascript);
+hljs.registerLanguage('json', json);
+hljs.registerLanguage('kotlin', kotlin);
+hljs.registerLanguage('lua', lua);
+hljs.registerLanguage('markdown', markdown);
+hljs.registerLanguage('matlab', matlab);
+hljs.registerLanguage('perl', perl);
+hljs.registerLanguage('php', php);
+hljs.registerLanguage('plaintext', plaintext);
+hljs.registerLanguage('powershell', powershell);
+hljs.registerLanguage('python', python);
+hljs.registerLanguage('r', r);
+hljs.registerLanguage('ruby', ruby);
+hljs.registerLanguage('rust', rust);
+hljs.registerLanguage('scala', scala);
+hljs.registerLanguage('scss', scss);
+hljs.registerLanguage('sql', sql);
+hljs.registerLanguage('swift', swift);
+hljs.registerLanguage('typescript', typescript);
+hljs.registerLanguage('vbscript', vbscript);
+hljs.registerLanguage('x86asm', x86asm);
+hljs.registerLanguage('xml', xml);
+hljs.registerLanguage('yaml', yaml);
 
 const SETTINGS_STORAGE_KEY = 'jsp.settings';
 
@@ -97,11 +175,9 @@ const elements = {
   headerPathToggle: document.querySelector('#header-path-toggle'),
   footerPageToggle: document.querySelector('#footer-page-toggle'),
   lineNumbersToggle: document.querySelector('#line-numbers-toggle'),
-  filterJavadocToggle: document.querySelector('#filter-javadoc-toggle'),
   filterCommentsToggle: document.querySelector('#filter-comments-toggle'),
   filterBlankLinesToggle: document.querySelector('#filter-blanklines-toggle'),
-  filterInitComponentsToggle: document.querySelector('#filter-initcomponents-toggle'),
-  filterMainToggle: document.querySelector('#filter-main-toggle'),
+  languageFilterSection: document.querySelector('#language-filter-section'),
   resetSettings: document.querySelector('#reset-settings'),
   helpModal: document.querySelector('#help-modal'),
   privacyModal: document.querySelector('#privacy-modal'),
@@ -135,11 +211,15 @@ const DEFAULT_SETTINGS = {
   showFilePath: false,
   showPageNumbers: true,
   showLineNumbers: false,
-  removeJavadoc: false,
   removeComments: false,
   collapseBlankLines: true,
-  hideInitComponents: true,
-  hideMain: true,
+  languageFilters: {
+    java: {
+      removeJavadoc: false,
+      hideInitComponents: true,
+      hideMain: true,
+    },
+  },
 };
 
 const state = {
@@ -195,7 +275,19 @@ function loadStoredSettings() {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : null;
+    if (!parsed || typeof parsed !== 'object') return null;
+    // Migrate flat Java filter settings to nested languageFilters shape.
+    if (parsed.removeJavadoc !== undefined || parsed.hideInitComponents !== undefined || parsed.hideMain !== undefined) {
+      parsed.languageFilters = parsed.languageFilters ?? {};
+      parsed.languageFilters.java = parsed.languageFilters.java ?? {};
+      if (parsed.removeJavadoc !== undefined) parsed.languageFilters.java.removeJavadoc = parsed.removeJavadoc;
+      if (parsed.hideInitComponents !== undefined) parsed.languageFilters.java.hideInitComponents = parsed.hideInitComponents;
+      if (parsed.hideMain !== undefined) parsed.languageFilters.java.hideMain = parsed.hideMain;
+      delete parsed.removeJavadoc;
+      delete parsed.hideInitComponents;
+      delete parsed.hideMain;
+    }
+    return parsed;
   } catch (_error) {
     return null;
   }
@@ -291,7 +383,7 @@ async function reloadZipProjects() {
     const projects = await parseZip(state.zipFile, state.settings.projectLevel);
     applyProjects(state.zipFile, projects);
     if (projects.length === 0) {
-      setStatus(`No .java files found at project level ${state.settings.projectLevel}.`);
+      setStatus(`No source files found at project level ${state.settings.projectLevel}.`);
     } else {
       setStatus('Preview ready.');
     }
@@ -327,12 +419,53 @@ function applySettingsToControls() {
   elements.headerPathToggle.checked = state.settings.showFilePath;
   elements.footerPageToggle.checked = state.settings.showPageNumbers;
   elements.lineNumbersToggle.checked = state.settings.showLineNumbers;
-  elements.filterJavadocToggle.checked = state.settings.removeJavadoc;
   elements.filterCommentsToggle.checked = state.settings.removeComments;
   elements.filterBlankLinesToggle.checked = state.settings.collapseBlankLines;
-  elements.filterInitComponentsToggle.checked = state.settings.hideInitComponents;
-  elements.filterMainToggle.checked = state.settings.hideMain;
   syncHeaderPathToggle();
+}
+
+function renderLanguageFilters() {
+  if (!elements.languageFilterSection) return;
+
+  const detectedLanguageIds = [
+    ...new Set(state.projects.flatMap((p) => p.files.map((f) => f.language).filter(Boolean))),
+  ];
+  const groups = getFiltersForLanguages(detectedLanguageIds);
+
+  if (groups.length === 0) {
+    elements.languageFilterSection.innerHTML = '';
+    return;
+  }
+
+  const html = groups
+    .map(({ language, languageLabel, filters }) => {
+      const rows = filters
+        .map(({ id, label }) => {
+          const checked = Boolean(state.settings.languageFilters?.[language]?.[id]);
+          return `
+            <div class="form-control">
+              <label class="label cursor-pointer gap-2 justify-start">
+                <input type="checkbox" class="toggle toggle-xs toggle-primary"
+                  data-lang-filter-lang="${language}" data-lang-filter-id="${id}"
+                  ${checked ? 'checked' : ''} />
+                <span class="label-text">${label}</span>
+              </label>
+            </div>`;
+        })
+        .join('');
+      return `<div class="mt-2"><p class="text-xs font-semibold text-base-content/60 mb-1">${languageLabel} filters</p>${rows}</div>`;
+    })
+    .join('');
+
+  elements.languageFilterSection.innerHTML = html;
+
+  elements.languageFilterSection.querySelectorAll('[data-lang-filter-lang]').forEach((checkbox) => {
+    checkbox.addEventListener('change', (event) => {
+      const lang = event.target.dataset.langFilterLang;
+      const filterId = event.target.dataset.langFilterId;
+      setSettings({ languageFilters: { [lang]: { [filterId]: event.target.checked } } });
+    });
+  });
 }
 
 function renderFileList() {
@@ -340,7 +473,7 @@ function renderFileList() {
   state.fileIndex.clear();
 
   if (state.projects.length === 0) {
-    elements.fileList.innerHTML = '<p class="text-xs text-base-content/60">Upload a zip to see your Java files.</p>';
+    elements.fileList.innerHTML = '<p class="text-xs text-base-content/60">Upload a zip to see your source files.</p>';
     return;
   }
 
@@ -454,10 +587,14 @@ function renderPreview() {
   elements.previewTitle.textContent = selection.file.name;
   elements.previewMeta.textContent = selection.project.name;
 
+  const language = selection.file.language ?? 'plaintext';
+  const fileSettings = { ...state.settings, language };
+
   if (state.settings.showLineNumbers) {
-    const { lines, maxLineNumber } = applyFiltersWithLineNumbers(selection.file.content, state.settings);
+    const { lines, maxLineNumber } = applyFiltersWithLineNumbers(selection.file.content, fileSettings);
     const filteredContent = lines.map((line) => line.text).join('\n');
-    const highlighted = hljs.highlight(filteredContent, { language: 'java' }).value;
+    const lang = hljs.getLanguage(language) ? language : 'plaintext';
+    const highlighted = hljs.highlight(filteredContent, { language: lang }).value;
     const highlightedLines = splitHighlightedLines(highlighted);
     const numberWidth = String(maxLineNumber).length;
     const numberedHtml = highlightedLines
@@ -467,13 +604,14 @@ function renderPreview() {
         return `<span class="code-line"><span class="line-number">${lineNumber}</span><span class="line-content">${content}</span></span>`;
       })
       .join('');
-    elements.codeBlock.className = 'hljs language-java line-numbers';
+    elements.codeBlock.className = `hljs language-${language} line-numbers`;
     elements.codeBlock.style.setProperty('--line-number-width', `${numberWidth}ch`);
     elements.codeBlock.innerHTML = numberedHtml;
   } else {
-    const filteredContent = applyFilters(selection.file.content, state.settings);
-    const highlighted = hljs.highlight(filteredContent, { language: 'java' }).value;
-    elements.codeBlock.className = 'hljs language-java';
+    const filteredContent = applyFilters(selection.file.content, fileSettings);
+    const lang = hljs.getLanguage(language) ? language : 'plaintext';
+    const highlighted = hljs.highlight(filteredContent, { language: lang }).value;
+    elements.codeBlock.className = `hljs language-${language}`;
     elements.codeBlock.style.removeProperty('--line-number-width');
     elements.codeBlock.innerHTML = highlighted;
   }
@@ -497,11 +635,9 @@ function setSettings({
   showFilePath,
   showPageNumbers,
   showLineNumbers,
-  removeJavadoc,
   removeComments,
   collapseBlankLines,
-  hideInitComponents,
-  hideMain,
+  languageFilters,
 }) {
   let needsPreviewRefresh = false;
   if (Number.isFinite(projectLevel)) {
@@ -560,10 +696,6 @@ function setSettings({
     state.settings.showLineNumbers = showLineNumbers;
     needsPreviewRefresh = true;
   }
-  if (typeof removeJavadoc === 'boolean') {
-    state.settings.removeJavadoc = removeJavadoc;
-    needsPreviewRefresh = true;
-  }
   if (typeof removeComments === 'boolean') {
     state.settings.removeComments = removeComments;
     needsPreviewRefresh = true;
@@ -572,12 +704,11 @@ function setSettings({
     state.settings.collapseBlankLines = collapseBlankLines;
     needsPreviewRefresh = true;
   }
-  if (typeof hideInitComponents === 'boolean') {
-    state.settings.hideInitComponents = hideInitComponents;
-    needsPreviewRefresh = true;
-  }
-  if (typeof hideMain === 'boolean') {
-    state.settings.hideMain = hideMain;
+  if (languageFilters && typeof languageFilters === 'object') {
+    state.settings.languageFilters = { ...state.settings.languageFilters };
+    for (const [lang, filters] of Object.entries(languageFilters)) {
+      state.settings.languageFilters[lang] = { ...(state.settings.languageFilters[lang] ?? {}), ...filters };
+    }
     needsPreviewRefresh = true;
   }
 
@@ -601,7 +732,7 @@ async function parseZip(file, projectLevel = state.settings.projectLevel) {
     return fileName.startsWith('.');
   }
 
-  function addJavaFile(projectName, filePath, content) {
+  function addSourceFile(projectName, filePath, content) {
     if (!projectMap.has(projectName)) {
       projectMap.set(projectName, []);
     }
@@ -612,6 +743,7 @@ async function parseZip(file, projectLevel = state.settings.projectLevel) {
       name: fileName,
       path: filePath,
       content,
+      language: getLanguageForExtension(filePath) ?? 'plaintext',
       included: true,
     });
   }
@@ -626,15 +758,14 @@ async function parseZip(file, projectLevel = state.settings.projectLevel) {
     const segments = normalizedPath.split('/').filter(Boolean);
     if (segments.length < level + 1) continue;
     const projectName = segments[level - 1];
-    const lowerPath = normalizedPath.toLowerCase();
 
-    if (lowerPath.endsWith('.java')) {
+    if (isSourceFile(normalizedPath)) {
       const content = await entry.async('text');
-      addJavaFile(projectName, normalizedPath, content);
+      addSourceFile(projectName, normalizedPath, content);
       continue;
     }
 
-    if (!lowerPath.endsWith('.umz')) {
+    if (!normalizedPath.toLowerCase().endsWith('.umz')) {
       continue;
     }
 
@@ -649,13 +780,13 @@ async function parseZip(file, projectLevel = state.settings.projectLevel) {
     for (const nestedEntry of nestedEntries) {
       if (nestedEntry.dir) continue;
       const nestedPath = nestedEntry.name.replace(/\\/g, '/');
-      if (!nestedPath.toLowerCase().endsWith('.java')) continue;
+      if (!isSourceFile(nestedPath)) continue;
       if (nestedPath.startsWith('/') || nestedPath.includes('..')) continue;
       if (shouldIgnorePath(nestedPath)) continue;
 
       const content = await nestedEntry.async('text');
       const combinedPath = `${normalizedPath}/${nestedPath}`;
-      addJavaFile(projectName, combinedPath, content);
+      addSourceFile(projectName, combinedPath, content);
     }
   }
 
@@ -683,6 +814,7 @@ function applyProjects(file, projects) {
 
   elements.zipMeta.textContent = `${file.name} (${Math.round(file.size / 1024)} KB)`;
   updateCounts();
+  renderLanguageFilters();
   renderFileList();
   renderPreview();
   updateDownloadButtonState();
@@ -815,7 +947,7 @@ async function handleLandingUpload() {
     showApp();
     setLandingStatus('');
     if (projects.length === 0) {
-      setStatus(`No .java files found at project level ${state.settings.projectLevel}.`);
+      setStatus(`No source files found at project level ${state.settings.projectLevel}.`);
     } else {
       setStatus('Preview ready.');
     }
@@ -836,7 +968,7 @@ async function handleAppZipChange(event) {
     const projects = await parseZip(file, state.settings.projectLevel);
     applyProjects(file, projects);
     if (projects.length === 0) {
-      setStatus(`No .java files found at project level ${state.settings.projectLevel}.`);
+      setStatus(`No source files found at project level ${state.settings.projectLevel}.`);
     } else {
       setStatus('Preview ready.');
     }
@@ -853,7 +985,13 @@ function handleChangeZipClick() {
 }
 
 function handleDemoMode() {
-  const projects = getDemoProjects();
+  const projects = getDemoProjects().map((project) => ({
+    ...project,
+    files: project.files.map((file) => ({
+      ...file,
+      language: file.language ?? getLanguageForExtension(file.path) ?? 'plaintext',
+    })),
+  }));
   state.zipFile = null;
   state.demoMode = true;
   state.projects = projects;
@@ -863,6 +1001,7 @@ function handleDemoMode() {
 
   elements.zipMeta.textContent = 'Demo mode';
   updateCounts();
+  renderLanguageFilters();
   renderFileList();
   renderPreview();
   updateDownloadButtonState();
@@ -1025,7 +1164,7 @@ function getFilenameFromDisposition(value) {
 }
 
 function getFallbackFilename() {
-  const base = state.zipFile?.name?.replace(/\.zip$/i, '') || 'java-source';
+  const base = state.zipFile?.name?.replace(/\.zip$/i, '') || 'source-output';
   return state.settings.outputMode === 'single' ? `${base}.pdf` : `${base}.zip`;
 }
 
@@ -1114,24 +1253,12 @@ elements.lineNumbersToggle.addEventListener('change', (event) => {
   setSettings({ showLineNumbers: event.target.checked });
 });
 
-elements.filterJavadocToggle.addEventListener('change', (event) => {
-  setSettings({ removeJavadoc: event.target.checked });
-});
-
 elements.filterCommentsToggle.addEventListener('change', (event) => {
   setSettings({ removeComments: event.target.checked });
 });
 
 elements.filterBlankLinesToggle.addEventListener('change', (event) => {
   setSettings({ collapseBlankLines: event.target.checked });
-});
-
-elements.filterInitComponentsToggle.addEventListener('change', (event) => {
-  setSettings({ hideInitComponents: event.target.checked });
-});
-
-elements.filterMainToggle.addEventListener('change', (event) => {
-  setSettings({ hideMain: event.target.checked });
 });
 
 elements.resetSettings.addEventListener('click', () => {
@@ -1168,7 +1295,13 @@ setupThemeOptions();
 setupFontOptions();
 const storedSettings = loadStoredSettings();
 if (storedSettings) {
-  state.settings = { ...DEFAULT_SETTINGS, ...storedSettings };
+  const mergedLanguageFilters = { ...DEFAULT_SETTINGS.languageFilters };
+  if (storedSettings.languageFilters && typeof storedSettings.languageFilters === 'object') {
+    for (const [lang, filters] of Object.entries(storedSettings.languageFilters)) {
+      mergedLanguageFilters[lang] = { ...(mergedLanguageFilters[lang] ?? {}), ...filters };
+    }
+  }
+  state.settings = { ...DEFAULT_SETTINGS, ...storedSettings, languageFilters: mergedLanguageFilters };
 }
 setSettings(state.settings);
 applySettingsToControls();

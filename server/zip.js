@@ -4,8 +4,9 @@ import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import unzipper from 'unzipper';
 import { sanitizeFilename, UserError } from './utils.js';
+import { getLanguageForExtension, isSourceFile } from '../shared/languages.js';
 
-const JAVA_FILE_TOO_LARGE_MESSAGE = 'A Java file exceeds the allowed size.';
+const SOURCE_FILE_TOO_LARGE_MESSAGE = 'A source file exceeds the allowed size.';
 const UMZ_FILE_TOO_LARGE_MESSAGE = 'An embedded .umz file exceeds the allowed size.';
 
 export async function saveUploadToTemp(filePart, config) {
@@ -17,7 +18,7 @@ export async function saveUploadToTemp(filePart, config) {
   return { tempDir, zipPath, originalName: filePart.filename || 'upload.zip' };
 }
 
-export async function readJavaProjects(zipPath, config, projectLevel = 1) {
+export async function readSourceProjects(zipPath, config, projectLevel = 1) {
   const directory = await unzipper.Open.file(zipPath);
   const projectMap = new Map();
   let totalBytes = 0;
@@ -32,10 +33,10 @@ export async function readJavaProjects(zipPath, config, projectLevel = 1) {
     return fileName.startsWith('.');
   }
 
-  function addJavaFile(projectName, filePath, content) {
+  function addSourceFile(projectName, filePath, content) {
     fileCount += 1;
     if (fileCount > config.maxFileCount) {
-      throw new UserError('Too many Java files in the zip.', 413);
+      throw new UserError('Too many source files in the zip.', 413);
     }
 
     if (!projectMap.has(projectName)) {
@@ -46,29 +47,30 @@ export async function readJavaProjects(zipPath, config, projectLevel = 1) {
       name: path.basename(filePath),
       path: filePath,
       content,
+      language: getLanguageForExtension(filePath) ?? 'plaintext',
     });
   }
 
   function addToTotalBytes(byteCount) {
     totalBytes += byteCount;
     if (totalBytes > config.maxTotalBytes) {
-      throw new UserError('Total Java source size exceeds the allowed limit.', 413);
+      throw new UserError('Total source size exceeds the allowed limit.', 413);
     }
   }
 
-  async function processJavaEntry(entry, normalizedPath, projectName) {
+  async function processSourceEntry(entry, normalizedPath, projectName) {
     const entrySize = Number(entry.uncompressedSize);
     const hasEntrySize = Number.isFinite(entrySize) && entrySize >= 0;
     if (hasEntrySize && entrySize > config.maxFileBytes) {
-      throw new UserError(JAVA_FILE_TOO_LARGE_MESSAGE, 413);
+      throw new UserError(SOURCE_FILE_TOO_LARGE_MESSAGE, 413);
     }
 
     const buffer = await readEntryBuffer(entry, {
       maxBytes: config.maxFileBytes,
-      tooLargeMessage: JAVA_FILE_TOO_LARGE_MESSAGE,
+      tooLargeMessage: SOURCE_FILE_TOO_LARGE_MESSAGE,
       onChunk: addToTotalBytes,
     });
-    addJavaFile(projectName, normalizedPath, buffer.toString('utf8'));
+    addSourceFile(projectName, normalizedPath, buffer.toString('utf8'));
   }
 
   async function processUmzEntry(entry, normalizedPath, projectName) {
@@ -92,7 +94,7 @@ export async function readJavaProjects(zipPath, config, projectLevel = 1) {
     for (const nestedEntry of nestedDirectory.files) {
       if (nestedEntry.type !== 'File') continue;
       const nestedPath = nestedEntry.path.replace(/\\/g, '/');
-      if (!nestedPath.toLowerCase().endsWith('.java')) continue;
+      if (!isSourceFile(nestedPath)) continue;
       if (nestedPath.startsWith('/') || nestedPath.includes('..')) continue;
       if (shouldIgnorePath(nestedPath)) continue;
 
@@ -100,15 +102,15 @@ export async function readJavaProjects(zipPath, config, projectLevel = 1) {
       const entrySize = Number(nestedEntry.uncompressedSize);
       const hasEntrySize = Number.isFinite(entrySize) && entrySize >= 0;
       if (hasEntrySize && entrySize > config.maxFileBytes) {
-        throw new UserError(JAVA_FILE_TOO_LARGE_MESSAGE, 413);
+        throw new UserError(SOURCE_FILE_TOO_LARGE_MESSAGE, 413);
       }
 
-      const javaBuffer = await readEntryBuffer(nestedEntry, {
+      const sourceBuffer = await readEntryBuffer(nestedEntry, {
         maxBytes: config.maxFileBytes,
-        tooLargeMessage: JAVA_FILE_TOO_LARGE_MESSAGE,
+        tooLargeMessage: SOURCE_FILE_TOO_LARGE_MESSAGE,
         onChunk: addToTotalBytes,
       });
-      addJavaFile(projectName, combinedPath, javaBuffer.toString('utf8'));
+      addSourceFile(projectName, combinedPath, sourceBuffer.toString('utf8'));
     }
   }
 
@@ -122,19 +124,18 @@ export async function readJavaProjects(zipPath, config, projectLevel = 1) {
     if (segments.length < level + 1) continue;
     const projectName = segments[level - 1];
 
-    const lowerPath = normalizedPath.toLowerCase();
-    if (lowerPath.endsWith('.java')) {
-      await processJavaEntry(entry, normalizedPath, projectName);
+    if (isSourceFile(normalizedPath)) {
+      await processSourceEntry(entry, normalizedPath, projectName);
       continue;
     }
 
-    if (lowerPath.endsWith('.umz')) {
+    if (normalizedPath.toLowerCase().endsWith('.umz')) {
       await processUmzEntry(entry, normalizedPath, projectName);
     }
   }
 
   if (fileCount === 0) {
-    throw new UserError(`No .java files found at project level ${level}.`, 422);
+    throw new UserError(`No source files found at project level ${level}.`, 422);
   }
 
   const projects = Array.from(projectMap.entries())

@@ -325,8 +325,9 @@ export function buildFileHtml({
   highlighter,
   fontFamily,
   fontCss,
+  language,
 }) {
-  const highlighted = highlighter.highlight(content, 'java');
+  const highlighted = highlighter.highlight(content, language ?? 'plaintext');
   const fontStack = resolveFontStack({ fontFamily });
   const numberWidth = maxLineNumber ? String(maxLineNumber).length : 1;
   const lines = showLineNumbers ? splitHighlightedLines(highlighted) : null;
@@ -406,7 +407,7 @@ export function buildFileHtml({
         </style>
       </head>
       <body>
-        <pre><code class="hljs language-java${showLineNumbers ? ' line-numbers' : ''}">${numberedHtml}</code></pre>
+        <pre><code class="hljs language-${language ?? 'plaintext'}${showLineNumbers ? ' line-numbers' : ''}">${numberedHtml}</code></pre>
       </body>
     </html>
   `;

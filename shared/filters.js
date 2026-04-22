@@ -283,11 +283,12 @@ function collapseBlankLineObjects(lines) {
 
 export function applyFilters(content, options = {}) {
   let text = content;
-  const removeJavadoc = Boolean(options.removeJavadoc);
+  const langOpts = options.languageFilters?.[options.language] ?? {};
+  const removeJavadoc = Boolean(options.removeJavadoc ?? langOpts.removeJavadoc);
   const removeComments = Boolean(options.removeComments);
   const collapseBlanks = Boolean(options.collapseBlankLines);
-  const hideInitComponents = Boolean(options.hideInitComponents);
-  const hideMain = Boolean(options.hideMain);
+  const hideInitComponents = Boolean(options.hideInitComponents ?? langOpts.hideInitComponents);
+  const hideMain = Boolean(options.hideMain ?? langOpts.hideMain);
   const tabsToSpaces = Boolean(options.tabsToSpaces);
 
   if (removeComments || removeJavadoc) {
@@ -324,11 +325,12 @@ export function applyFilters(content, options = {}) {
 }
 
 export function applyFiltersWithLineNumbers(content, options = {}) {
-  const removeJavadoc = Boolean(options.removeJavadoc);
+  const langOpts = options.languageFilters?.[options.language] ?? {};
+  const removeJavadoc = Boolean(options.removeJavadoc ?? langOpts.removeJavadoc);
   const removeComments = Boolean(options.removeComments);
   const collapseBlanks = Boolean(options.collapseBlankLines);
-  const hideInitComponents = Boolean(options.hideInitComponents);
-  const hideMain = Boolean(options.hideMain);
+  const hideInitComponents = Boolean(options.hideInitComponents ?? langOpts.hideInitComponents);
+  const hideMain = Boolean(options.hideMain ?? langOpts.hideMain);
   const tabsToSpaces = Boolean(options.tabsToSpaces);
 
   const originalLines = content.split(/\r?\n/);
