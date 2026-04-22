@@ -1,25 +1,3 @@
-function collapseBlankLines(text) {
-  const newline = text.includes('\r\n') ? '\r\n' : '\n';
-  const lines = text.split(/\r?\n/);
-  const result = [];
-  let previousBlank = false;
-
-  for (const line of lines) {
-    const isBlank = line.trim() === '';
-    if (isBlank) {
-      if (!previousBlank) {
-        result.push('');
-        previousBlank = true;
-      }
-    } else {
-      result.push(line);
-      previousBlank = false;
-    }
-  }
-
-  return result.join(newline);
-}
-
 function stripCommentsPreserveLines(text, mode) {
   let output = '';
   let index = 0;
@@ -30,6 +8,18 @@ function stripCommentsPreserveLines(text, mode) {
     const next = text[index + 1];
 
     if (state === 'code') {
+      if (char === '"') {
+        state = 'string';
+        output += char;
+        index += 1;
+        continue;
+      }
+      if (char === "'") {
+        state = 'charlit';
+        output += char;
+        index += 1;
+        continue;
+      }
       if (char === '/' && next === '/') {
         if (mode === 'all') {
           state = 'line';
@@ -52,6 +42,34 @@ function stripCommentsPreserveLines(text, mode) {
       }
 
       output += char;
+      index += 1;
+      continue;
+    }
+
+    if (state === 'string') {
+      output += char;
+      if (char === '\\' && next !== undefined) {
+        output += next;
+        index += 2;
+        continue;
+      }
+      if (char === '"' || char === '\n') {
+        state = 'code';
+      }
+      index += 1;
+      continue;
+    }
+
+    if (state === 'charlit') {
+      output += char;
+      if (char === '\\' && next !== undefined) {
+        output += next;
+        index += 2;
+        continue;
+      }
+      if (char === "'" || char === '\n') {
+        state = 'code';
+      }
       index += 1;
       continue;
     }
@@ -93,89 +111,6 @@ function stripCommentsPreserveLines(text, mode) {
   return output;
 }
 
-function removeInitComponents(text) {
-  const signature = 'private void initComponents()';
-  const newline = text.includes('\r\n') ? '\r\n' : '\n';
-  let index = 0;
-  let result = '';
-
-  while (index < text.length) {
-    const matchIndex = text.indexOf(signature, index);
-    if (matchIndex === -1) {
-      result += text.slice(index);
-      break;
-    }
-
-    result += text.slice(index, matchIndex);
-    const lineStart = text.lastIndexOf('\n', matchIndex - 1) + 1;
-    const linePrefix = text.slice(lineStart, matchIndex);
-    const indentMatch = linePrefix.match(/^\s*/);
-    const indent = indentMatch ? indentMatch[0] : '';
-    let cursor = matchIndex + signature.length;
-    const openBraceIndex = text.indexOf('{', cursor);
-    if (openBraceIndex === -1) {
-      result += text.slice(matchIndex);
-      break;
-    }
-
-    cursor = openBraceIndex + 1;
-    let depth = 1;
-    while (cursor < text.length && depth > 0) {
-      const char = text[cursor];
-      if (char === '{') depth += 1;
-      if (char === '}') depth -= 1;
-      cursor += 1;
-    }
-
-    result += `${signature} {${newline}${indent}  // initComponents() hidden${newline}${indent}}${newline}`;
-    index = cursor;
-  }
-
-  return result;
-}
-
-function removeMainMethod(text) {
-  const signature = 'public static void main';
-  const newline = text.includes('\r\n') ? '\r\n' : '\n';
-  let index = 0;
-  let result = '';
-
-  while (index < text.length) {
-    const matchIndex = text.indexOf(signature, index);
-    if (matchIndex === -1) {
-      result += text.slice(index);
-      break;
-    }
-
-    result += text.slice(index, matchIndex);
-    const lineStart = text.lastIndexOf('\n', matchIndex - 1) + 1;
-    const linePrefix = text.slice(lineStart, matchIndex);
-    const indentMatch = linePrefix.match(/^\s*/);
-    const indent = indentMatch ? indentMatch[0] : '';
-    let cursor = matchIndex + signature.length;
-    const openBraceIndex = text.indexOf('{', cursor);
-    if (openBraceIndex === -1) {
-      result += text.slice(matchIndex);
-      break;
-    }
-
-    const signatureText = text.slice(matchIndex, openBraceIndex);
-    cursor = openBraceIndex + 1;
-    let depth = 1;
-    while (cursor < text.length && depth > 0) {
-      const char = text[cursor];
-      if (char === '{') depth += 1;
-      if (char === '}') depth -= 1;
-      cursor += 1;
-    }
-
-    result += `${signatureText}{${newline}${indent}  // main() hidden${newline}${indent}}${newline}`;
-    index = cursor;
-  }
-
-  return result;
-}
-
 function replaceTabs(text, tabWidth = 4) {
   const spaces = ' '.repeat(tabWidth);
   return text.replace(/\t/g, spaces);
@@ -195,10 +130,16 @@ function hideMethodBodyLines(lines, signature, label) {
 
     const indentMatch = lineText.match(/^\s*/);
     const indent = indentMatch ? indentMatch[0] : '';
+    const signatureIndent = indent.length;
 
     let openLine = index;
     let openPos = lineText.indexOf('{', signatureIndex);
     while (openPos === -1 && openLine + 1 < lines.length) {
+      const nextLine = lines[openLine + 1];
+      const nextIndent = (nextLine.text.match(/^\s*/) || [''])[0].length;
+      if (nextLine.text.trim() !== '' && nextIndent <= signatureIndent) {
+        break;
+      }
       openLine += 1;
       openPos = lines[openLine].text.indexOf('{');
     }
@@ -246,6 +187,10 @@ function hideMethodBodyLines(lines, signature, label) {
     if (commentLine < endLine) {
       lines[commentLine].text = `${indent}  // ${label} hidden`;
       lines[commentLine].removed = false;
+    } else {
+      // Empty body: no room for a separate comment line — append inline to the opening brace
+      const openLineRef = openLine === index ? line : lines[openLine];
+      openLineRef.text += ` // ${label} hidden`;
     }
 
     for (let lineIndex = commentLine + 1; lineIndex < endLine; lineIndex += 1) {
@@ -282,46 +227,9 @@ function collapseBlankLineObjects(lines) {
 }
 
 export function applyFilters(content, options = {}) {
-  let text = content;
-  const langOpts = options.languageFilters?.[options.language] ?? {};
-  const removeJavadoc = Boolean(options.removeJavadoc ?? langOpts.removeJavadoc);
-  const removeComments = Boolean(options.removeComments);
-  const collapseBlanks = Boolean(options.collapseBlankLines);
-  const hideInitComponents = Boolean(options.hideInitComponents ?? langOpts.hideInitComponents);
-  const hideMain = Boolean(options.hideMain ?? langOpts.hideMain);
-  const tabsToSpaces = Boolean(options.tabsToSpaces);
-
-  if (removeComments || removeJavadoc) {
-    const newline = text.includes('\r\n') ? '\r\n' : '\n';
-    const originalLines = text.split(/\r?\n/);
-    const stripped = removeComments
-      ? stripCommentsPreserveLines(text, 'all')
-      : stripCommentsPreserveLines(text, 'javadoc');
-    const strippedLines = stripped.split(/\r?\n/);
-    const keptLines = strippedLines.filter((line, index) => {
-      if (line.trim() !== '') return true;
-      return (originalLines[index] || '').trim() === '';
-    });
-    text = keptLines.join(newline);
-  }
-
-  if (hideInitComponents) {
-    text = removeInitComponents(text);
-  }
-
-  if (hideMain) {
-    text = removeMainMethod(text);
-  }
-
-  if (collapseBlanks) {
-    text = collapseBlankLines(text);
-  }
-
-  if (tabsToSpaces) {
-    text = replaceTabs(text, 4);
-  }
-
-  return text;
+  const { lines } = applyFiltersWithLineNumbers(content, options);
+  const newline = content.includes('\r\n') ? '\r\n' : '\n';
+  return lines.map((l) => l.text).join(newline);
 }
 
 export function applyFiltersWithLineNumbers(content, options = {}) {

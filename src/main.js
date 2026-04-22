@@ -192,6 +192,11 @@ const elements = {
   previewTitle: document.querySelector('#preview-title'),
   previewMeta: document.querySelector('#preview-meta'),
   previewWrapper: document.querySelector('#preview-wrapper'),
+  previewPre: document.querySelector('#preview-wrapper pre'),
+  previewPageHeader: document.querySelector('#preview-page-header'),
+  previewHeaderLeft: document.querySelector('#preview-header-left'),
+  previewHeaderRight: document.querySelector('#preview-header-right'),
+  previewPageFooter: document.querySelector('#preview-page-footer'),
   codeBlock: document.querySelector('#code-block'),
   downloadSpinner: document.querySelector('#download-spinner'),
 };
@@ -375,6 +380,45 @@ function updatePreviewFontFamily() {
   elements.codeBlock.style.fontFamily = font.css;
 }
 
+function updatePreviewHeaderFooter() {
+  const selection = state.fileIndex.get(state.selectedFileId);
+  const { showProjectHeader, showFileHeader, showFilePath, showPageNumbers, fontSize, lineHeight } = state.settings;
+  const font = getFontById(state.settings.fontFamily);
+
+  elements.previewPageHeader.style.display = 'flex';
+  const headerFontSize = Math.max(8, fontSize - 1);
+  elements.previewPageHeader.style.fontSize = `${headerFontSize}px`;
+  elements.previewPageHeader.style.lineHeight = String(lineHeight);
+  elements.previewPageHeader.style.fontFamily = font.css;
+  elements.previewHeaderLeft.textContent = showProjectHeader && selection ? selection.project.name : '';
+  if (showFileHeader && selection) {
+    elements.previewHeaderRight.textContent = showFilePath
+      ? (selection.file.path ?? selection.file.name)
+      : selection.file.name;
+    elements.previewHeaderRight.style.overflow = showFilePath ? '' : 'hidden';
+    elements.previewHeaderRight.style.textOverflow = showFilePath ? '' : 'ellipsis';
+    elements.previewHeaderRight.style.whiteSpace = showFilePath ? 'normal' : 'nowrap';
+    elements.previewHeaderRight.style.overflowWrap = showFilePath ? 'anywhere' : '';
+    elements.previewHeaderRight.style.wordBreak = showFilePath ? 'break-word' : '';
+  } else {
+    elements.previewHeaderRight.textContent = '';
+    elements.previewHeaderRight.style.overflow = '';
+    elements.previewHeaderRight.style.textOverflow = '';
+    elements.previewHeaderRight.style.whiteSpace = '';
+    elements.previewHeaderRight.style.overflowWrap = '';
+    elements.previewHeaderRight.style.wordBreak = '';
+  }
+
+  elements.previewPageFooter.style.display = 'block';
+  elements.previewPageFooter.style.fontSize = `${fontSize}px`;
+  elements.previewPageFooter.style.lineHeight = String(lineHeight);
+  elements.previewPageFooter.style.fontFamily = font.css;
+  elements.previewPageFooter.textContent = showPageNumbers ? 'Page 1' : '';
+
+  elements.previewPre.style.paddingTop = '0';
+  elements.previewPre.style.paddingBottom = '0';
+}
+
 async function reloadZipProjects() {
   if (!state.zipFile) return;
   setLoading(true);
@@ -422,6 +466,7 @@ function applySettingsToControls() {
   elements.filterCommentsToggle.checked = state.settings.removeComments;
   elements.filterBlankLinesToggle.checked = state.settings.collapseBlankLines;
   syncHeaderPathToggle();
+  updatePreviewHeaderFooter();
 }
 
 function renderLanguageFilters() {
@@ -581,6 +626,7 @@ function renderPreview() {
     elements.previewTitle.textContent = 'Select a file';
     elements.previewMeta.textContent = '';
     elements.codeBlock.textContent = '';
+    updatePreviewHeaderFooter();
     return;
   }
 
@@ -618,6 +664,7 @@ function renderPreview() {
   updatePreviewFontSize();
   updatePreviewLineHeight();
   updatePreviewFontFamily();
+  updatePreviewHeaderFooter();
 }
 
 function setSettings({
@@ -660,7 +707,7 @@ function setSettings({
   if (theme) {
     state.settings.theme = theme;
     applyHighlightTheme(theme);
-    renderPreview();
+    needsPreviewRefresh = true;
   }
   if (fontFamily) {
     state.settings.fontFamily = fontFamily;
@@ -714,6 +761,8 @@ function setSettings({
 
   if (needsPreviewRefresh) {
     renderPreview();
+  } else {
+    updatePreviewHeaderFooter();
   }
 
   saveStoredSettings();

@@ -92,13 +92,30 @@ body {
   white-space: pre-wrap;
   word-break: break-word;
   overflow-wrap: anywhere;
-  padding: 14mm;
+  padding: 18mm 14mm;
 }
 
 #preview-wrapper {
   width: 210mm;
   max-width: 100%;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+}
+
+#preview-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 7mm 14mm;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  letter-spacing: -0.05em;
+}
+
+#preview-page-footer {
+  display: block;
+  padding: 7mm 14mm;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  text-align: center;
 }
 
 #code-block.line-numbers {
