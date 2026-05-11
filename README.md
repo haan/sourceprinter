@@ -2,6 +2,8 @@
 
 Source Printer turns a zip full of student coding projects into syntax-highlighted PDFs. It parses the zip in the browser for preview, then sends the zip and settings to a stateless Node backend that renders PDFs and streams the download. Any programming language with a recognized file extension is supported.
 
+- Docker image: https://hub.docker.com/r/haanlaurent/sourceprinter
+
 ## Features
 - Upload a zip containing multiple top-level project folders.
 - Configure the project folder level when the zip nests projects deeper.
@@ -42,6 +44,30 @@ npm run lint:fix
 
 ```
 npm run build
+```
+
+## Run with Docker
+
+Run the latest published image from Docker Hub:
+https://hub.docker.com/r/haanlaurent/sourceprinter
+
+```bash
+docker run --rm -p 8080:8080 haanlaurent/sourceprinter:latest
+```
+
+Then open: http://localhost:8080
+
+Run a specific version tag:
+
+```bash
+docker run --rm -p 8080:8080 haanlaurent/sourceprinter:v0.9.4
+```
+
+Build and run locally from this repository:
+
+```bash
+docker build -t sourceprinter:local .
+docker run --rm -p 8080:8080 sourceprinter:local
 ```
 
 ## Deployment
