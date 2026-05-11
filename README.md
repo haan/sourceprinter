@@ -22,30 +22,6 @@ Source Printer turns a zip full of student coding projects into syntax-highlight
 - Settings persist in localStorage with a reset-to-defaults action.
 - No files retained on the server (temp files are deleted after each request).
 
-## Development
-
-```
-npm install
-npm run playwright:install
-npm run dev
-```
-
-Frontend: `http://localhost:5173`  
-Backend: `http://127.0.0.1:3001`
-
-## Lint
-
-```
-npm run lint
-npm run lint:fix
-```
-
-## Build
-
-```
-npm run build
-```
-
 ## Run with Docker
 
 Run the latest published image from Docker Hub:
