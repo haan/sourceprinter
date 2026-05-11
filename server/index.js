@@ -1,10 +1,13 @@
 import fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
+import staticFiles from '@fastify/static';
 import archiver from 'archiver';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import { PassThrough } from 'node:stream';
+import { fileURLToPath } from 'node:url';
 import { PDFDocument } from 'pdf-lib';
 import { config } from './config.js';
 import { parseSettings } from './settings.js';
@@ -27,6 +30,9 @@ const MAX_ACTIVE_JOBS = Math.max(1, config.maxActiveJobs);
 const MAX_QUEUED_JOBS = Math.max(0, config.maxQueuedJobs);
 const jobs = new Map();
 const JOB_TTL_MS = 5 * 60 * 1000;
+const serverDir = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(serverDir, '..');
+const distDir = path.join(projectRoot, 'dist');
 let directRendersInFlight = 0;
 
 if (process.env.NODE_ENV !== 'production') {
@@ -41,6 +47,27 @@ app.register(multipart, {
 });
 
 app.get('/api/health', async () => ({ status: 'ok' }));
+
+function isApiPath(url) {
+  const pathName = String(url || '').split('?')[0];
+  return pathName === '/api' || pathName.startsWith('/api/');
+}
+
+async function registerProductionFrontend() {
+  await app.register(staticFiles, {
+    root: distDir,
+    prefix: '/',
+  });
+
+  app.setNotFoundHandler((request, reply) => {
+    if (isApiPath(request.url)) {
+      reply.code(404).send({ error: 'Not found.' });
+      return;
+    }
+
+    reply.sendFile('index.html');
+  });
+}
 
 async function renderFilePdf({ file, projectName, settings, renderer, theme, highlighter, fontCss }) {
   let content = file.content;
@@ -634,7 +661,15 @@ process.once('beforeExit', (code) => {
   shutdown().finally(() => process.exit(code));
 });
 
-app.listen({ host: config.host, port: config.port }).catch((error) => {
+async function start() {
+  if (process.env.NODE_ENV === 'production') {
+    await registerProductionFrontend();
+  }
+
+  await app.listen({ host: config.host, port: config.port });
+}
+
+start().catch((error) => {
   app.log.error(error);
   process.exit(1);
 });
