@@ -45,7 +45,7 @@ import { DEFAULT_THEME_ID, getThemeOptions } from '../shared/themes.js';
 import { applyHighlightTheme } from './theme-loader.js';
 import { applyFilters, applyFiltersWithLineNumbers } from '../shared/filters.js';
 import { getLanguageForExtension, isSourceFile } from '../shared/languages.js';
-import { getFiltersForLanguages } from '../shared/languageFilters.js';
+import { getDefaultLanguageFilters, getFiltersForLanguages } from '../shared/languageFilters.js';
 
 hljs.registerLanguage('bash', bash);
 hljs.registerLanguage('c', c);
@@ -219,14 +219,17 @@ const DEFAULT_SETTINGS = {
   showLineNumbers: false,
   removeComments: false,
   collapseBlankLines: true,
-  languageFilters: {
-    java: {
-      removeJavadoc: false,
-      hideInitComponents: true,
-      hideMain: true,
-    },
-  },
+  languageFilters: getDefaultLanguageFilters(),
 };
+
+function createDefaultSettings() {
+  return {
+    ...DEFAULT_SETTINGS,
+    languageFilters: Object.fromEntries(
+      Object.entries(DEFAULT_SETTINGS.languageFilters).map(([language, filters]) => [language, { ...filters }]),
+    ),
+  };
+}
 
 const state = {
   zipFile: null,
@@ -236,7 +239,7 @@ const state = {
   selectedFileId: null,
   fileIndex: new Map(),
   isLoading: false,
-  settings: { ...DEFAULT_SETTINGS },
+  settings: createDefaultSettings(),
 };
 
 let activeEventSource = null;
@@ -467,6 +470,7 @@ function applySettingsToControls() {
   elements.filterCommentsToggle.checked = state.settings.removeComments;
   elements.filterBlankLinesToggle.checked = state.settings.collapseBlankLines;
   syncHeaderPathToggle();
+  renderLanguageFilters();
   updatePreviewHeaderFooter();
 }
 
@@ -1409,7 +1413,7 @@ elements.filterBlankLinesToggle.addEventListener('change', (event) => {
 });
 
 elements.resetSettings.addEventListener('click', () => {
-  state.settings = { ...DEFAULT_SETTINGS };
+  state.settings = createDefaultSettings();
   setSettings(state.settings);
   applySettingsToControls();
   document.querySelector('#reset-modal').checked = false;
@@ -1442,7 +1446,7 @@ setupThemeOptions();
 setupFontOptions();
 const storedSettings = loadStoredSettings();
 if (storedSettings) {
-  const mergedLanguageFilters = { ...DEFAULT_SETTINGS.languageFilters };
+  const mergedLanguageFilters = createDefaultSettings().languageFilters;
   if (storedSettings.languageFilters && typeof storedSettings.languageFilters === 'object') {
     for (const [lang, filters] of Object.entries(storedSettings.languageFilters)) {
       mergedLanguageFilters[lang] = { ...(mergedLanguageFilters[lang] ?? {}), ...filters };

@@ -18,14 +18,23 @@ const LANGUAGE_LABELS = {
 export const LANGUAGE_FILTERS = {
   java: [
     { id: 'removeJavadoc', label: 'Remove Javadoc', default: false },
-    { id: 'hideInitComponents', label: 'Hide initComponents()', default: false },
-    { id: 'hideMain', label: 'Hide main()', default: false },
+    { id: 'hideInitComponents', label: 'Hide initComponents()', default: true },
+    { id: 'hideMain', label: 'Hide main()', default: true },
   ],
   // Example of how to add Python filters in the future:
   // python: [
   //   { id: 'removeDocstrings', label: 'Remove Docstrings', default: false },
   // ],
 };
+
+export function getDefaultLanguageFilters() {
+  return Object.fromEntries(
+    Object.entries(LANGUAGE_FILTERS).map(([languageId, filters]) => [
+      languageId,
+      Object.fromEntries(filters.map(({ id, default: defaultValue }) => [id, Boolean(defaultValue)])),
+    ]),
+  );
+}
 
 export function getFiltersForLanguage(languageId) {
   return LANGUAGE_FILTERS[languageId] ?? [];

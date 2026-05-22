@@ -1,6 +1,6 @@
 import { DEFAULT_FONT_ID, getFontById } from '../shared/fonts.js';
 import { DEFAULT_THEME_ID, getThemeById } from '../shared/themes.js';
-import { LANGUAGE_FILTERS } from '../shared/languageFilters.js';
+import { getDefaultLanguageFilters, LANGUAGE_FILTERS } from '../shared/languageFilters.js';
 import { clampNumber } from './utils.js';
 
 export const DEFAULT_SETTINGS = {
@@ -20,13 +20,7 @@ export const DEFAULT_SETTINGS = {
   showLineNumbers: false,
   removeComments: false,
   collapseBlankLines: true,
-  languageFilters: {
-    java: {
-      removeJavadoc: false,
-      hideInitComponents: true,
-      hideMain: true,
-    },
-  },
+  languageFilters: getDefaultLanguageFilters(),
 };
 
 function toStringPayload(payload) {
@@ -59,7 +53,7 @@ function toBreakMultiple(value, fallback) {
 function parseLanguageFilters(raw) {
   const result = {};
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return DEFAULT_SETTINGS.languageFilters;
+    return getDefaultLanguageFilters();
   }
   for (const [languageId, filterDefs] of Object.entries(LANGUAGE_FILTERS)) {
     const langRaw = raw[languageId];
