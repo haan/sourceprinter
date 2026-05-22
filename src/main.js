@@ -178,6 +178,7 @@ const elements = {
   filterCommentsToggle: document.querySelector('#filter-comments-toggle'),
   filterBlankLinesToggle: document.querySelector('#filter-blanklines-toggle'),
   languageFilterSection: document.querySelector('#language-filter-section'),
+  excludeFilesSection: document.querySelector('#exclude-files-section'),
   resetSettings: document.querySelector('#reset-settings'),
   helpModal: document.querySelector('#help-modal'),
   privacyModal: document.querySelector('#privacy-modal'),
@@ -513,6 +514,76 @@ function renderLanguageFilters() {
   });
 }
 
+function getFilenameGroups() {
+  const groups = new Map();
+
+  for (const project of state.projects) {
+    for (const file of project.files) {
+      const name = file.name || file.path || 'Unnamed file';
+      if (!groups.has(name)) {
+        groups.set(name, { name, files: [] });
+      }
+      groups.get(name).files.push(file);
+    }
+  }
+
+  return Array.from(groups.values()).sort((a, b) => {
+    const baseCompare = a.name.localeCompare(b.name, 'en', { sensitivity: 'base' });
+    return baseCompare || a.name.localeCompare(b.name, 'en');
+  });
+}
+
+function renderExcludeFiles() {
+  if (!elements.excludeFilesSection) return;
+
+  elements.excludeFilesSection.innerHTML = '';
+  const groups = getFilenameGroups();
+
+  if (groups.length === 0) {
+    elements.excludeFilesSection.innerHTML =
+      '<p class="text-xs text-base-content/60">Upload a zip to see detected filenames.</p>';
+    return;
+  }
+
+  const list = document.createElement('div');
+  list.className = 'grid gap-1';
+
+  for (const group of groups) {
+    const includedCount = group.files.filter((file) => file.included !== false).length;
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'checkbox checkbox-xs checkbox-primary shrink-0';
+    checkbox.checked = includedCount === group.files.length;
+    checkbox.indeterminate = includedCount > 0 && includedCount < group.files.length;
+    checkbox.addEventListener('change', (event) => {
+      group.files.forEach((file) => {
+        file.included = event.target.checked;
+      });
+      renderFileList();
+      renderExcludeFiles();
+      updateDownloadButtonState();
+    });
+
+    const name = document.createElement('span');
+    name.className = 'min-w-0 flex-1 truncate text-xs text-base-content/80';
+    name.textContent = group.name;
+    name.title = group.name;
+
+    const count = document.createElement('span');
+    count.className = 'shrink-0 text-[0.6875rem] text-base-content/50';
+    count.textContent = `${group.files.length} file${group.files.length === 1 ? '' : 's'}`;
+
+    const row = document.createElement('label');
+    row.className = 'flex min-w-0 cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-base-300/60';
+    row.appendChild(checkbox);
+    row.appendChild(name);
+    row.appendChild(count);
+    list.appendChild(row);
+  }
+
+  elements.excludeFilesSection.appendChild(list);
+}
+
 function renderFileList() {
   elements.fileList.innerHTML = '';
   state.fileIndex.clear();
@@ -567,6 +638,7 @@ function renderFileList() {
       checkbox.checked = file.included !== false;
       checkbox.addEventListener('change', (event) => {
         file.included = event.target.checked;
+        renderExcludeFiles();
         updateDownloadButtonState();
       });
       checkbox.addEventListener('click', (event) => {
@@ -864,6 +936,7 @@ function applyProjects(file, projects) {
   elements.zipMeta.textContent = `${file.name} (${Math.round(file.size / 1024)} KB)`;
   updateCounts();
   renderLanguageFilters();
+  renderExcludeFiles();
   renderFileList();
   renderPreview();
   updateDownloadButtonState();
@@ -937,11 +1010,23 @@ function getDemoProjects() {
           content: `package demo.lib;\n\npublic class Library {\n  public String version() {\n    return \"1.0.0\";\n  }\n}\n`,
           included: true,
         },
+        {
+          name: 'Main.java',
+          path: 'demo-lib/examples/Main.java',
+          content: `package demo.lib.examples;\n\nimport demo.lib.Library;\n\npublic class Main {\n  public static void main(String[] args) {\n    System.out.println(new Library().version());\n  }\n}\n`,
+          included: true,
+        },
       ],
     },
     {
       name: 'demo-service',
       files: [
+        {
+          name: 'Config.java',
+          path: 'demo-service/config/Config.java',
+          content: `package demo.service.config;\n\npublic final class Config {\n  public static final String API_BASE = \"https://example.test\";\n  public static final int TIMEOUT_SECONDS = 10;\n\n  private Config() {}\n}\n`,
+          included: false,
+        },
         {
           name: 'ApiClient.java',
           path: 'demo-service/src/ApiClient.java',
@@ -960,11 +1045,23 @@ function getDemoProjects() {
           content: `package demo.service;\n\npublic enum ServiceStatus {\n  STARTING,\n  RUNNING,\n  STOPPED\n}\n`,
           included: true,
         },
+        {
+          name: 'Main.java',
+          path: 'demo-service/src/bootstrap/Main.java',
+          content: `package demo.service.bootstrap;\n\npublic class Main {\n  public static void main(String[] args) {\n    System.out.println(\"Starting demo service\");\n  }\n}\n`,
+          included: true,
+        },
       ],
     },
     {
       name: 'demo-ui',
       files: [
+        {
+          name: 'Config.java',
+          path: 'demo-ui/resources/generated/Config.java',
+          content: `package demo.ui.generated;\n\npublic final class Config {\n  public static final String THEME = \"light\";\n  public static final boolean SHOW_TOOLBAR = true;\n\n  private Config() {}\n}\n`,
+          included: true,
+        },
         {
           name: 'MainFrame.java',
           path: 'demo-ui/src/MainFrame.java',
@@ -1051,6 +1148,7 @@ function handleDemoMode() {
   elements.zipMeta.textContent = 'Demo mode';
   updateCounts();
   renderLanguageFilters();
+  renderExcludeFiles();
   renderFileList();
   renderPreview();
   updateDownloadButtonState();
