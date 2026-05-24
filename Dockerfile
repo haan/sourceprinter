@@ -29,16 +29,14 @@ ENV NODE_ENV=production \
 
 COPY package*.json ./
 RUN npm ci --omit=dev \
-    && npx playwright install --with-deps chromium \
+    && npx playwright install --with-deps --only-shell chromium \
     && npm cache clean --force \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/server ./server
-COPY --from=builder /app/shared ./shared
-COPY --from=builder /app/public ./public
-
-RUN chown -R node:node /app /ms-playwright
+COPY --chown=node:node --from=builder /app/dist ./dist
+COPY --chown=node:node --from=builder /app/server ./server
+COPY --chown=node:node --from=builder /app/shared ./shared
+COPY --chown=node:node --from=builder /app/public ./public
 
 USER node
 
