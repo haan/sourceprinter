@@ -88,6 +88,15 @@ hljs.registerLanguage('xml', xml);
 hljs.registerLanguage('yaml', yaml);
 
 const SETTINGS_STORAGE_KEY = 'jsp.settings';
+const PREVIEW_PAGE_SIZE_MM = {
+  width: 210,
+  height: 297,
+};
+const PREVIEW_PAGE_MARGINS_MM = {
+  horizontal: 14,
+  body: 18,
+  headerFooter: 25,
+};
 
 function splitHighlightedLines(highlighted) {
   const lines = [];
@@ -192,8 +201,16 @@ const elements = {
   progressValue: document.querySelector('#progress-value'),
   previewTitle: document.querySelector('#preview-title'),
   previewMeta: document.querySelector('#preview-meta'),
+  previewPager: document.querySelector('#preview-pager'),
+  previewPrevPage: document.querySelector('#preview-prev-page'),
+  previewPageSelect: document.querySelector('#preview-page-select'),
+  previewNextPage: document.querySelector('#preview-next-page'),
   previewWrapper: document.querySelector('#preview-wrapper'),
+  previewContentViewport: document.querySelector('#preview-content-viewport'),
   previewPre: document.querySelector('#preview-wrapper pre'),
+  previewMeasurer: document.querySelector('#preview-measurer'),
+  previewMeasurePre: document.querySelector('#preview-measure-pre'),
+  previewMeasureCode: document.querySelector('#preview-measure-code'),
   previewPageHeader: document.querySelector('#preview-page-header'),
   previewHeaderLeft: document.querySelector('#preview-header-left'),
   previewHeaderRight: document.querySelector('#preview-header-right'),
@@ -237,6 +254,10 @@ const state = {
   demoMode: false,
   projects: [],
   selectedFileId: null,
+  currentPreviewPage: 1,
+  previewPageCount: 1,
+  previewCodeLines: [],
+  previewPages: [{ start: 0, end: 0 }],
   fileIndex: new Map(),
   isLoading: false,
   settings: createDefaultSettings(),
@@ -328,6 +349,9 @@ function showLanding() {
 function showApp() {
   elements.landing.classList.add('hidden');
   elements.app.classList.remove('hidden');
+  window.requestAnimationFrame(() => {
+    updatePreviewPagination();
+  });
 }
 
 function hasIncludedFiles() {
@@ -373,15 +397,226 @@ function updateCounts() {
 
 function updatePreviewFontSize() {
   elements.codeBlock.style.fontSize = `${state.settings.fontSize}px`;
+  elements.previewMeasureCode.style.fontSize = `${state.settings.fontSize}px`;
 }
 
 function updatePreviewLineHeight() {
   elements.codeBlock.style.lineHeight = `${state.settings.lineHeight}`;
+  elements.previewMeasureCode.style.lineHeight = `${state.settings.lineHeight}`;
 }
 
 function updatePreviewFontFamily() {
   const font = getFontById(state.settings.fontFamily);
   elements.codeBlock.style.fontFamily = font.css;
+  elements.previewMeasureCode.style.fontFamily = font.css;
+}
+
+function hasPreviewHeader() {
+  return state.settings.showProjectHeader || state.settings.showFileHeader;
+}
+
+function getPreviewMargins() {
+  return {
+    top: hasPreviewHeader() ? PREVIEW_PAGE_MARGINS_MM.headerFooter : PREVIEW_PAGE_MARGINS_MM.body,
+    right: PREVIEW_PAGE_MARGINS_MM.horizontal,
+    bottom: state.settings.showPageNumbers ? PREVIEW_PAGE_MARGINS_MM.headerFooter : PREVIEW_PAGE_MARGINS_MM.body,
+    left: PREVIEW_PAGE_MARGINS_MM.horizontal,
+  };
+}
+
+function updatePreviewPageGeometry() {
+  const margins = getPreviewMargins();
+  elements.previewWrapper.style.width = `${PREVIEW_PAGE_SIZE_MM.width}mm`;
+  elements.previewWrapper.style.height = `${PREVIEW_PAGE_SIZE_MM.height}mm`;
+  elements.previewWrapper.style.setProperty('--preview-margin-top', `${margins.top}mm`);
+  elements.previewWrapper.style.setProperty('--preview-margin-right', `${margins.right}mm`);
+  elements.previewWrapper.style.setProperty('--preview-margin-bottom', `${margins.bottom}mm`);
+  elements.previewWrapper.style.setProperty('--preview-margin-left', `${margins.left}mm`);
+}
+
+function getPreviewRawContentHeight() {
+  const wrapperRect = elements.previewWrapper.getBoundingClientRect();
+  const pxPerMm = wrapperRect.height / PREVIEW_PAGE_SIZE_MM.height;
+  const margins = getPreviewMargins();
+  return Math.max(0, wrapperRect.height - (margins.top + margins.bottom) * pxPerMm);
+}
+
+function getPreviewLineHeightPx() {
+  const computed = window.getComputedStyle(elements.previewMeasureCode);
+  const lineHeight = Number.parseFloat(computed.lineHeight);
+  if (Number.isFinite(lineHeight) && lineHeight > 0) return lineHeight;
+  return state.settings.fontSize * state.settings.lineHeight;
+}
+
+function getPreviewPageStepHeight() {
+  const rawContentHeight = getPreviewRawContentHeight();
+  const lineHeight = getPreviewLineHeightPx();
+  if (rawContentHeight <= 0 || lineHeight <= 0) return rawContentHeight;
+  return Math.max(lineHeight, Math.floor(rawContentHeight / lineHeight) * lineHeight);
+}
+
+function buildPreviewCode(selection) {
+  if (!selection) {
+    return {
+      htmlLines: [],
+      className: 'language-plaintext',
+      numberWidth: null,
+    };
+  }
+
+  const language = selection.file.language ?? 'plaintext';
+  const fileSettings = { ...state.settings, language };
+
+  if (state.settings.showLineNumbers) {
+    const { lines, maxLineNumber } = applyFiltersWithLineNumbers(selection.file.content, fileSettings);
+    const filteredContent = lines.map((line) => line.text).join('\n');
+    const lang = hljs.getLanguage(language) ? language : 'plaintext';
+    const highlighted = hljs.highlight(filteredContent, { language: lang }).value;
+    const highlightedLines = splitHighlightedLines(highlighted);
+    const numberWidth = String(maxLineNumber).length;
+    const htmlLines = highlightedLines
+      .map((line, index) => {
+        const lineNumber = lines[index]?.number ?? '';
+        const content = line.length ? line : '&nbsp;';
+        return `<span class="preview-code-line code-line"><span class="line-number">${lineNumber}</span><span class="line-content">${content}</span></span>`;
+      });
+
+    return {
+      htmlLines,
+      className: `hljs language-${language} line-numbers`,
+      numberWidth,
+    };
+  }
+
+  const filteredContent = applyFilters(selection.file.content, fileSettings);
+  const lang = hljs.getLanguage(language) ? language : 'plaintext';
+  const highlighted = hljs.highlight(filteredContent, { language: lang }).value;
+  const htmlLines = splitHighlightedLines(highlighted).map((line) => {
+    const content = line.length ? line : '&nbsp;';
+    return `<span class="preview-code-line">${content}</span>`;
+  });
+  return {
+    htmlLines,
+    className: `hljs language-${language}`,
+    numberWidth: null,
+  };
+}
+
+function applyPreviewCode({ htmlLines, className, numberWidth }) {
+  const html = htmlLines.join('');
+  state.previewCodeLines = htmlLines;
+  elements.codeBlock.className = className;
+  elements.previewMeasureCode.className = className;
+  elements.codeBlock.innerHTML = html;
+  elements.previewMeasureCode.innerHTML = html;
+
+  if (numberWidth) {
+    elements.codeBlock.style.setProperty('--line-number-width', `${numberWidth}ch`);
+    elements.previewMeasureCode.style.setProperty('--line-number-width', `${numberWidth}ch`);
+  } else {
+    elements.codeBlock.style.removeProperty('--line-number-width');
+    elements.previewMeasureCode.style.removeProperty('--line-number-width');
+  }
+
+  updatePreviewFontSize();
+  updatePreviewLineHeight();
+  updatePreviewFontFamily();
+}
+
+function measurePreviewPageCount() {
+  const selection = state.fileIndex.get(state.selectedFileId);
+  if (!selection) {
+    state.previewPages = [{ start: 0, end: 0 }];
+    return 1;
+  }
+
+  const contentRect = elements.previewContentViewport.getBoundingClientRect();
+  const contentWidth = contentRect.width;
+  const pageStepHeight = getPreviewPageStepHeight();
+  if (contentWidth <= 0 || pageStepHeight <= 0) {
+    state.previewPages = [{ start: 0, end: state.previewCodeLines.length }];
+    return 1;
+  }
+  elements.previewWrapper.style.setProperty('--preview-page-step-height', `${pageStepHeight}px`);
+
+  elements.previewMeasurer.style.width = `${contentWidth}px`;
+  const lineElements = Array.from(elements.previewMeasureCode.querySelectorAll('.preview-code-line'));
+  if (lineElements.length === 0) {
+    state.previewPages = [{ start: 0, end: 0 }];
+    return 1;
+  }
+
+  const codeTop = elements.previewMeasureCode.getBoundingClientRect().top;
+  const pages = [];
+  let pageStart = 0;
+  let pageTop = 0;
+
+  lineElements.forEach((lineElement, index) => {
+    const rect = lineElement.getBoundingClientRect();
+    const lineTop = rect.top - codeTop;
+    const lineBottom = rect.bottom - codeTop;
+    if (index > pageStart && lineBottom - pageTop > pageStepHeight + 0.5) {
+      pages.push({ start: pageStart, end: index });
+      pageStart = index;
+      pageTop = lineTop;
+    }
+  });
+  pages.push({ start: pageStart, end: lineElements.length });
+  state.previewPages = pages;
+  return pages.length;
+}
+
+function clampPreviewPage() {
+  state.previewPageCount = Math.max(1, state.previewPageCount);
+  state.currentPreviewPage = Math.min(
+    state.previewPageCount,
+    Math.max(1, Number(state.currentPreviewPage) || 1),
+  );
+}
+
+function updatePreviewPager() {
+  const selection = state.fileIndex.get(state.selectedFileId);
+  const disabled = !selection || state.previewPageCount <= 1;
+  const current = state.currentPreviewPage;
+  const total = state.previewPageCount;
+
+  elements.previewPrevPage.disabled = disabled || current <= 1;
+  elements.previewNextPage.disabled = disabled || current >= total;
+  elements.previewPageSelect.disabled = disabled;
+
+  const expectedOptions = total;
+  if (elements.previewPageSelect.options.length !== expectedOptions) {
+    elements.previewPageSelect.innerHTML = Array.from({ length: total }, (_, index) => {
+      const page = index + 1;
+      return `<option value="${page}">Page ${page} of ${total}</option>`;
+    }).join('');
+  } else {
+    Array.from(elements.previewPageSelect.options).forEach((option, index) => {
+      const page = index + 1;
+      option.textContent = `Page ${page} of ${total}`;
+    });
+  }
+  elements.previewPageSelect.value = String(current);
+}
+
+function updatePreviewPagePosition() {
+  clampPreviewPage();
+  const pageStepHeight = getPreviewPageStepHeight();
+  elements.previewWrapper.style.setProperty('--preview-page-step-height', `${pageStepHeight}px`);
+  const page = state.previewPages[state.currentPreviewPage - 1] ?? { start: 0, end: state.previewCodeLines.length };
+  elements.codeBlock.innerHTML = state.previewCodeLines.slice(page.start, page.end).join('');
+  elements.codeBlock.style.paddingTop = page.start === 0 ? '' : '0';
+  elements.codeBlock.style.paddingBottom = page.end >= state.previewCodeLines.length ? '' : '0';
+  elements.previewPageFooter.textContent = state.settings.showPageNumbers
+    ? `Page ${state.currentPreviewPage} of ${state.previewPageCount}`
+    : '';
+  updatePreviewPager();
+}
+
+function updatePreviewPagination() {
+  updatePreviewPageGeometry();
+  state.previewPageCount = measurePreviewPageCount();
+  updatePreviewPagePosition();
 }
 
 function updatePreviewHeaderFooter() {
@@ -389,7 +624,9 @@ function updatePreviewHeaderFooter() {
   const { showProjectHeader, showFileHeader, showFilePath, showPageNumbers, fontSize, lineHeight } = state.settings;
   const font = getFontById(state.settings.fontFamily);
 
-  elements.previewPageHeader.style.display = 'flex';
+  updatePreviewPageGeometry();
+
+  elements.previewPageHeader.style.display = hasPreviewHeader() ? 'flex' : 'none';
   const headerFontSize = Math.max(8, fontSize - 1);
   elements.previewPageHeader.style.fontSize = `${headerFontSize}px`;
   elements.previewPageHeader.style.lineHeight = String(lineHeight);
@@ -413,14 +650,11 @@ function updatePreviewHeaderFooter() {
     elements.previewHeaderRight.style.wordBreak = '';
   }
 
-  elements.previewPageFooter.style.display = 'block';
+  elements.previewPageFooter.style.display = showPageNumbers ? 'block' : 'none';
   elements.previewPageFooter.style.fontSize = `${fontSize}px`;
   elements.previewPageFooter.style.lineHeight = String(lineHeight);
   elements.previewPageFooter.style.fontFamily = font.css;
-  elements.previewPageFooter.textContent = showPageNumbers ? 'Page 1' : '';
-
-  elements.previewPre.style.paddingTop = '0';
-  elements.previewPre.style.paddingBottom = '0';
+  updatePreviewPagination();
 }
 
 async function reloadZipProjects() {
@@ -701,7 +935,10 @@ function renderPreview() {
   if (!selection) {
     elements.previewTitle.textContent = 'Select a file';
     elements.previewMeta.textContent = '';
-    elements.codeBlock.textContent = '';
+    applyPreviewCode(buildPreviewCode(null));
+    state.currentPreviewPage = 1;
+    state.previewPageCount = 1;
+    state.previewPages = [{ start: 0, end: 0 }];
     updatePreviewHeaderFooter();
     return;
   }
@@ -709,37 +946,7 @@ function renderPreview() {
   elements.previewTitle.textContent = selection.file.name;
   elements.previewMeta.textContent = selection.project.name;
 
-  const language = selection.file.language ?? 'plaintext';
-  const fileSettings = { ...state.settings, language };
-
-  if (state.settings.showLineNumbers) {
-    const { lines, maxLineNumber } = applyFiltersWithLineNumbers(selection.file.content, fileSettings);
-    const filteredContent = lines.map((line) => line.text).join('\n');
-    const lang = hljs.getLanguage(language) ? language : 'plaintext';
-    const highlighted = hljs.highlight(filteredContent, { language: lang }).value;
-    const highlightedLines = splitHighlightedLines(highlighted);
-    const numberWidth = String(maxLineNumber).length;
-    const numberedHtml = highlightedLines
-      .map((line, index) => {
-        const lineNumber = lines[index]?.number ?? '';
-        const content = line.length ? line : '&nbsp;';
-        return `<span class="code-line"><span class="line-number">${lineNumber}</span><span class="line-content">${content}</span></span>`;
-      })
-      .join('');
-    elements.codeBlock.className = `hljs language-${language} line-numbers`;
-    elements.codeBlock.style.setProperty('--line-number-width', `${numberWidth}ch`);
-    elements.codeBlock.innerHTML = numberedHtml;
-  } else {
-    const filteredContent = applyFilters(selection.file.content, fileSettings);
-    const lang = hljs.getLanguage(language) ? language : 'plaintext';
-    const highlighted = hljs.highlight(filteredContent, { language: lang }).value;
-    elements.codeBlock.className = `hljs language-${language}`;
-    elements.codeBlock.style.removeProperty('--line-number-width');
-    elements.codeBlock.innerHTML = highlighted;
-  }
-  updatePreviewFontSize();
-  updatePreviewLineHeight();
-  updatePreviewFontFamily();
+  applyPreviewCode(buildPreviewCode(selection));
   updatePreviewHeaderFooter();
 }
 
@@ -936,6 +1143,9 @@ function applyProjects(file, projects) {
   state.selectedFileId = projects[0]?.files[0]
     ? `${projects[0].name}:::${projects[0].files[0].path}`
     : null;
+  state.currentPreviewPage = 1;
+  state.previewPageCount = 1;
+  state.previewPages = [{ start: 0, end: 0 }];
 
   elements.zipMeta.textContent = `${file.name} (${Math.round(file.size / 1024)} KB)`;
   updateCounts();
@@ -1148,6 +1358,9 @@ function handleDemoMode() {
   state.selectedFileId = projects[0]?.files[0]
     ? `${projects[0].name}:::${projects[0].files[0].path}`
     : null;
+  state.currentPreviewPage = 1;
+  state.previewPageCount = 1;
+  state.previewPages = [{ start: 0, end: 0 }];
 
   elements.zipMeta.textContent = 'Demo mode';
   updateCounts();
@@ -1166,6 +1379,11 @@ function handleFileListClick(event) {
   }
   const row = event.target.closest('tr[data-file-id]');
   if (!row) return;
+  if (state.selectedFileId !== row.dataset.fileId) {
+    state.currentPreviewPage = 1;
+    state.previewPageCount = 1;
+    state.previewPages = [{ start: 0, end: 0 }];
+  }
   state.selectedFileId = row.dataset.fileId;
   renderFileList();
   renderPreview();
@@ -1349,6 +1567,26 @@ elements.confirmDownload.addEventListener('click', () => {
   elements.confirmDownloadModal.checked = false;
   handleDownload();
 });
+elements.previewPrevPage.addEventListener('click', () => {
+  state.currentPreviewPage -= 1;
+  updatePreviewPagePosition();
+});
+elements.previewNextPage.addEventListener('click', () => {
+  state.currentPreviewPage += 1;
+  updatePreviewPagePosition();
+});
+elements.previewPageSelect.addEventListener('change', (event) => {
+  state.currentPreviewPage = Number(event.target.value);
+  updatePreviewPagePosition();
+});
+window.addEventListener('resize', () => {
+  updatePreviewPagination();
+});
+if (document.fonts?.ready) {
+  document.fonts.ready.then(() => {
+    updatePreviewPagination();
+  });
+}
 
 elements.projectLevel.addEventListener('input', async (event) => {
   const projectLevel = Number(event.target.value);

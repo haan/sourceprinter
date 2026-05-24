@@ -147,48 +147,93 @@ body {
   outline-offset: 2px;
 }
 
-#preview-wrapper pre {
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-  padding: 18mm 14mm;
-}
-
 #preview-wrapper {
   width: 210mm;
-  max-width: 100%;
+  height: 297mm;
+  max-width: none;
+  position: relative;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  --preview-margin-top: 25mm;
+  --preview-margin-right: 14mm;
+  --preview-margin-bottom: 25mm;
+  --preview-margin-left: 14mm;
+  --preview-page-step-height: calc(297mm - var(--preview-margin-top) - var(--preview-margin-bottom));
 }
 
 #preview-page-header {
   display: flex;
+  position: absolute;
+  inset: 0 0 auto 0;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 7mm 14mm;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   letter-spacing: -0.05em;
+  box-sizing: border-box;
 }
 
 #preview-page-footer {
   display: block;
+  position: absolute;
+  inset: auto 0 0 0;
   padding: 7mm 14mm;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
   text-align: center;
+  box-sizing: border-box;
 }
 
-#code-block.line-numbers {
+#preview-content-viewport {
+  position: absolute;
+  top: var(--preview-margin-top);
+  right: var(--preview-margin-right);
+  left: var(--preview-margin-left);
+  height: var(--preview-page-step-height);
+  overflow: hidden;
+}
+
+#preview-pre,
+#preview-measure-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  background: transparent;
+}
+
+#preview-measurer {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: calc(210mm - 28mm);
+  visibility: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
+
+#code-block.line-numbers,
+#preview-measure-code.line-numbers {
   --line-number-width: 2ch;
 }
 
-#code-block.line-numbers .code-line {
+#code-block.line-numbers .code-line,
+#preview-measure-code.line-numbers .code-line {
   display: flex;
   align-items: flex-start;
   line-height: inherit;
 }
 
-#code-block.line-numbers .line-number {
+#code-block .preview-code-line,
+#preview-measure-code .preview-code-line {
+  display: block;
+  line-height: inherit;
+}
+
+#code-block.line-numbers .preview-code-line,
+#preview-measure-code.line-numbers .preview-code-line {
+  display: flex;
+}
+
+#code-block.line-numbers .line-number,
+#preview-measure-code.line-numbers .line-number {
   width: calc(var(--line-number-width) + 0.75rem);
   flex: 0 0 calc(var(--line-number-width) + 0.75rem);
   text-align: right;
@@ -200,7 +245,8 @@ body {
   line-height: inherit;
 }
 
-#code-block.line-numbers .line-content {
+#code-block.line-numbers .line-content,
+#preview-measure-code.line-numbers .line-content {
   flex: 1;
   min-width: 0;
   white-space: pre-wrap;
