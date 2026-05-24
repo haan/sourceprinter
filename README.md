@@ -36,7 +36,7 @@ Then open: http://localhost:8080
 Run a specific version tag:
 
 ```bash
-docker run --rm -p 8080:8080 haanlaurent/sourceprinter:v0.9.4
+docker run --rm -p 8080:8080 haanlaurent/sourceprinter:v0.11.0
 ```
 
 Build and run locally from this repository:
