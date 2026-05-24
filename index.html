@@ -398,23 +398,39 @@
           </section>
 
           <section class="relative rounded-box border border-base-300 bg-base-100 p-6 shadow">
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between gap-4">
               <div>
                 <p class="text-xs uppercase tracking-[0.3em] text-base-content/70">Preview</p>
                 <h2 id="preview-title" class="text-2xl font-semibold">Select a file</h2>
               </div>
-              <span id="preview-meta" class="text-xs text-base-content/60"></span>
+              <div class="flex flex-wrap items-center justify-end gap-3">
+                <span id="preview-meta" class="text-xs text-base-content/60"></span>
+                <div id="preview-pager" class="join">
+                  <button id="preview-prev-page" type="button" class="btn btn-sm join-item" aria-label="Previous preview page" title="Previous page">
+                    &lt;
+                  </button>
+                  <select id="preview-page-select" class="select select-bordered select-sm join-item min-w-28" aria-label="Preview page"></select>
+                  <button id="preview-next-page" type="button" class="btn btn-sm join-item" aria-label="Next preview page" title="Next page">
+                    &gt;
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <div id="preview-wrapper" class="mt-6 mx-auto rounded-box border border-base-300 bg-white overflow-hidden">
-              <div id="preview-page-header">
-                <span id="preview-header-left"></span>
-                <span id="preview-header-right"></span>
+            <div id="preview-scroll" class="mt-6 overflow-x-auto pb-2">
+              <div id="preview-wrapper" class="mx-auto rounded-box border border-base-300 bg-white overflow-hidden">
+                <div id="preview-page-header">
+                  <span id="preview-header-left"></span>
+                  <span id="preview-header-right"></span>
+                </div>
+                <div id="preview-content-viewport">
+                  <pre id="preview-pre"><code id="code-block" class="language-plaintext"></code></pre>
+                </div>
+                <div id="preview-page-footer">Page 1 of 1</div>
               </div>
-              <pre class="max-h-[68vh] overflow-auto">
-                <code id="code-block" class="language-plaintext"></code>
-              </pre>
-              <div id="preview-page-footer">Page 1</div>
+            </div>
+            <div id="preview-measurer" aria-hidden="true">
+              <pre id="preview-measure-pre"><code id="preview-measure-code" class="language-plaintext"></code></pre>
             </div>
 
           </section>
