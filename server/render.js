@@ -386,11 +386,11 @@ export function buildFileHtml({
             line-height: inherit;
           }
           .line-numbers .line-number {
-            width: var(--line-number-width);
+            width: calc(var(--line-number-width) + 0.75rem);
+            flex: 0 0 calc(var(--line-number-width) + 0.75rem);
             text-align: right;
             padding-right: 0.75rem;
             color: rgba(0, 0, 0, 0.3);
-            flex: 0 0 auto;
             user-select: none;
             white-space: nowrap;
             font-variant-numeric: tabular-nums;

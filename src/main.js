@@ -556,7 +556,7 @@ function renderExcludeFiles() {
     const includedCount = group.files.filter((file) => file.included !== false).length;
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
-    checkbox.className = 'checkbox checkbox-xs checkbox-primary shrink-0';
+    checkbox.className = 'checkbox checkbox-xs checkbox-primary file-checkbox shrink-0';
     checkbox.checked = includedCount === group.files.length;
     checkbox.indeterminate = includedCount > 0 && includedCount < group.files.length;
     checkbox.addEventListener('change', (event) => {
@@ -638,7 +638,7 @@ function renderFileList() {
 
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
-      checkbox.className = 'checkbox checkbox-xs checkbox-primary';
+      checkbox.className = 'checkbox checkbox-xs checkbox-primary file-checkbox';
       checkbox.checked = file.included !== false;
       checkbox.addEventListener('change', (event) => {
         file.included = event.target.checked;

@@ -87,6 +87,66 @@ body {
   margin: 0;
 }
 
+.file-checkbox.checkbox {
+  --file-checkbox-size: 1rem;
+  --file-checkbox-mark: none;
+  width: var(--file-checkbox-size);
+  height: var(--file-checkbox-size);
+  min-width: var(--file-checkbox-size);
+  padding: 0;
+  border: 1.5px solid var(--color-primary);
+  border-radius: 9999px;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  color: var(--color-primary-content);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.file-checkbox.checkbox::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: auto;
+  height: auto;
+  clip-path: none;
+  rotate: 0deg;
+  translate: 0;
+  opacity: 0;
+  background-color: currentColor;
+  box-shadow: none;
+  -webkit-mask: var(--file-checkbox-mark) center / 0.75rem 0.75rem no-repeat;
+  mask: var(--file-checkbox-mark) center / 0.75rem 0.75rem no-repeat;
+  transition: opacity 0.12s ease;
+}
+
+.file-checkbox.checkbox:checked,
+.file-checkbox.checkbox:indeterminate {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+  background-image: none;
+  box-shadow: none;
+}
+
+.file-checkbox.checkbox:checked::before {
+  --file-checkbox-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.3 6.8 11 12.2 5' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  opacity: 1;
+}
+
+.file-checkbox.checkbox:indeterminate::before {
+  --file-checkbox-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 8h7' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E");
+  opacity: 1;
+}
+
+.file-checkbox.checkbox:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 #preview-wrapper pre {
   line-height: 1.5;
   white-space: pre-wrap;
@@ -129,11 +189,11 @@ body {
 }
 
 #code-block.line-numbers .line-number {
-  width: var(--line-number-width);
+  width: calc(var(--line-number-width) + 0.75rem);
+  flex: 0 0 calc(var(--line-number-width) + 0.75rem);
   text-align: right;
   padding-right: 0.75rem;
   color: rgba(0, 0, 0, 0.3);
-  flex: 0 0 auto;
   user-select: none;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
