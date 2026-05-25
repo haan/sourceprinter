@@ -2,7 +2,7 @@ import fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import staticFiles from '@fastify/static';
-import archiver from 'archiver';
+import { ZipArchive } from 'archiver';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -264,7 +264,7 @@ function startQueuedJobs() {
 }
 
 async function buildZipBuffer(entries) {
-  const archive = archiver('zip', { zlib: { level: 9 } });
+  const archive = new ZipArchive({ zlib: { level: 9 } });
   const stream = new PassThrough();
   const chunks = [];
 
@@ -497,7 +497,7 @@ app.post('/api/render', async (request, reply) => {
         const zipName = `${baseNameWithoutExtension(originalName)}.zip`;
         reply.type('application/zip').header('Content-Disposition', `attachment; filename="${zipName}"`);
 
-        const archive = archiver('zip', { zlib: { level: 9 } });
+        const archive = new ZipArchive({ zlib: { level: 9 } });
         archive.on('error', (error) => reply.raw.destroy(error));
         reply.send(archive);
 
