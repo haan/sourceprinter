@@ -39,7 +39,7 @@
     "@tailwindcss/postcss": "^4.3.3",
     "autoprefixer": "^10.5.4",
     "concurrently": "^10.0.5",
-    "daisyui": "^5.7.22",
+    "daisyui": "^5.7.25",
     "eslint": "^10.9.1",
     "postcss": "^8.5.24",
     "tailwindcss": "^4.1.18",
