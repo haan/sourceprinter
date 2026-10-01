@@ -12,10 +12,10 @@ Target layout:
 `-- package-lock.json  # if you use npm ci
 ```
 
-## 1) Install Node.js 20 LTS
+## 1) Install Node.js 22 (22.12.0 or newer)
 
 ```
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
 ```
 
