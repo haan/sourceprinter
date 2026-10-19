@@ -14,7 +14,7 @@
           <p class="text-sm text-base-content/70">Select a zip file with your student projects to preview <span class="font-semibold">locally</span>. Embedded <span class="font-semibold">.umz</span> archives (Unimozer/Java) are supported.</p>
         </div>
         <div class="flex w-full flex-col items-center gap-2">
-          <input id="zip-input" type="file" accept=".zip" class="file-input file-input-bordered w-full max-w-md" />
+          <input id="zip-input" type="file" accept=".zip,.umz" class="file-input file-input-bordered w-full max-w-md" />
           <p id="landing-meta" class="text-xs text-base-content/60">No file selected.</p>
         </div>
         <div class="flex flex-wrap justify-center gap-3">
@@ -240,7 +240,7 @@
                 <p id="zip-meta" class="text-xs text-base-content/60">No file selected.</p>
               </div>
               <div class="flex items-center gap-2">
-                <input id="zip-input-app" type="file" accept=".zip" class="hidden" />
+                <input id="zip-input-app" type="file" accept=".zip,.umz" class="hidden" />
                 <button id="change-zip" class="btn btn-xs btn-outline">Change</button>
               </div>
             </div>
