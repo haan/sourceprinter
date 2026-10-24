@@ -1,4 +1,4 @@
-FROM node:22.23.4-bookworm-slim AS builder
+FROM node:26.12.0-bookworm-slim AS builder
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:22.23.4-bookworm-slim AS runtime
+FROM node:26.12.0-bookworm-slim AS runtime
 
 WORKDIR /app
 
