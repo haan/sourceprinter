@@ -9,15 +9,19 @@ Target layout:
 |-- shared/            # Shared theme definitions
 |-- public/            # Static assets (logo)
 |-- package.json
+|-- .npmrc             # enforce patched Node.js requirements
 `-- package-lock.json  # if you use npm ci
 ```
 
-## 1) Install Node.js 22 (22.12.0 or newer)
+## 1) Install Node.js 22 (22.23.4 or newer in the 22.x branch)
 
 ```
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
+node --version
 ```
+
+Supported alternatives are Node.js 24.22.1+ in the 24.x branch and 26.12.1+ in the 26.x branch. These minimum releases fix [CVE-2026-111497](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases). npm installation and backend startup reject older or unsupported runtimes. Check `/usr/bin/node --version` for the systemd service below; a different Node.js installation on your interactive PATH does not update that service.
 
 ## 2) Build locally (recommended)
 
@@ -33,7 +37,7 @@ Upload to the server:
 - `server/` -> `/var/www/source/server`
 - `shared/` -> `/var/www/source/shared`
 - `public/` -> `/var/www/source/public` (optional when building locally; `dist/` already contains copied public assets)
-- `package.json` and `package-lock.json` -> `/var/www/source/`
+- `package.json`, `package-lock.json`, and `.npmrc` -> `/var/www/source/`
 
 ## 3) Install runtime dependencies + Playwright deps (server)
 
@@ -88,6 +92,8 @@ sudo certbot --apache -d source.haan.lu
 
 ## Updating an existing deployment
 
+First verify `/usr/bin/node --version` on the server and upgrade Node.js if it is below the supported minimum above. Installing npm packages does not update Node.js or its bundled Brotli decoder. Restart the backend after any Node.js update, even if no application files changed.
+
 1) Build locally
 ```
 npm ci
@@ -97,7 +103,7 @@ npm run build
 2) Upload changed files to the server (overwrite existing)
 - Frontend changes: `dist/` -> `/var/www/source/dist`
 - Backend changes: `server/` -> `/var/www/source/server` and `shared/` -> `/var/www/source/shared`
-- Dependency changes: `package.json` and `package-lock.json` -> `/var/www/source/`
+- Dependency changes: `package.json`, `package-lock.json`, and `.npmrc` -> `/var/www/source/`
 - `public/` is optional when you build locally; files from `public/` are copied into `dist/` during `vite build`.
 
 3) On the server, update runtime deps only if `package.json` or `package-lock.json` changed
@@ -111,7 +117,7 @@ npm ci --omit=dev
 sudo -u www-data -H env PLAYWRIGHT_BROWSERS_PATH=/var/www/source/.cache/ms-playwright npx playwright install chromium
 ```
 
-5) Restart backend service only if backend code, deps, or `/var/www/source/server/.env` changed
+5) Restart backend service if Node.js, backend code, deps, or `/var/www/source/server/.env` changed
 ```
 sudo systemctl restart sourceprinter
 ```

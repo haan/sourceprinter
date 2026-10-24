@@ -1,14 +1,14 @@
-FROM node:22-bookworm-slim AS builder
+FROM node:22.23.4-bookworm-slim AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY package*.json .npmrc ./
 RUN npm ci
 
 COPY . .
 RUN npm run build
 
-FROM node:22-bookworm-slim AS runtime
+FROM node:22.23.4-bookworm-slim AS runtime
 
 WORKDIR /app
 
@@ -27,7 +27,7 @@ ENV NODE_ENV=production \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     CHROMIUM_NO_SANDBOX=1
 
-COPY package*.json ./
+COPY package*.json .npmrc ./
 RUN npm ci --omit=dev \
     && npx playwright install --with-deps --only-shell chromium \
     && npm cache clean --force \

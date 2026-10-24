@@ -10,6 +10,7 @@ import { PassThrough } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { PDFDocument } from 'pdf-lib';
 import { config } from './config.js';
+import { assertSupportedNodeVersion } from './runtime.js';
 import { parseSettings } from './settings.js';
 import { saveUploadToTemp, readSourceProjects } from './zip.js';
 import { baseNameWithoutExtension, sanitizeFilename, UserError } from './utils.js';
@@ -23,6 +24,8 @@ import {
   createPdfRenderer,
   createRenderContext,
 } from './render.js';
+
+assertSupportedNodeVersion();
 
 const app = fastify({ logger: false });
 const RENDER_CONCURRENCY = Math.max(1, config.renderConcurrency);

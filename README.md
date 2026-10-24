@@ -24,6 +24,8 @@ Source Printer turns a zip full of student coding projects into syntax-highlight
 
 ## Run with Docker
 
+For local development or a direct Node.js deployment, use Node.js **22.23.4+**, **24.22.1+**, or **26.12.1+** within those major versions. These minimum versions include the CVE-2026-111497 Brotli decoder fix. Dependency installation and backend startup reject older or unsupported runtimes.
+
 Run the latest published image from Docker Hub:
 https://hub.docker.com/r/haanlaurent/sourceprinter
 
@@ -36,19 +38,21 @@ Then open: http://localhost:8080
 Run a specific version tag:
 
 ```bash
-docker run --rm -p 8080:8080 haanlaurent/sourceprinter:v0.11.0
+docker run --rm -p 8080:8080 haanlaurent/sourceprinter:RELEASE_TAG
 ```
 
 Build and run locally from this repository:
 
 ```bash
-docker build -t sourceprinter:local .
+docker build --pull -t sourceprinter:local .
 docker run --rm -p 8080:8080 sourceprinter:local
 ```
 
 ## Deployment
 
 See `deploy/README-DEPLOY.md`.
+
+Existing images must be rebuilt and containers replaced to pick up runtime security fixes. Pulling `latest` only helps after a patched SourcePrinter image has been published. Check the runtime in a running container with `docker exec sourceprinter node --version`.
 
 ## Related Project
 
