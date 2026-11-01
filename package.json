@@ -38,11 +38,11 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
-    "autoprefixer": "^10.6.1",
+    "autoprefixer": "^10.6.2",
     "concurrently": "^10.0.6",
     "daisyui": "^5.7.50",
     "eslint": "^10.13.0",
-    "postcss": "^8.5.31",
+    "postcss": "^8.5.32",
     "tailwindcss": "^4.1.18",
     "vite": "^8.3.5"
   }
